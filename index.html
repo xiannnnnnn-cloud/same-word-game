@@ -66,7 +66,9 @@
       display: flex;
       gap: 10px;
     }
-    input#shareLink {
+    input#shareLink,
+    input#guessInput,
+    input#secretWordInput {
       flex: 1;
       padding: 12px 14px;
       border: 1px solid #dcdfe6;
@@ -85,33 +87,40 @@
       border-radius: 12px;
       color: #2c5ea8;
     }
-    .log-box {
+    .history-box {
       margin-top: 20px;
-      height: 220px;
+      height: 240px;
       overflow-y: auto;
       border: 1px solid #dcdfe6;
       border-radius: 12px;
       padding: 14px;
       background: #f8f9fb;
     }
-    .log-item {
-      margin-bottom: 8px;
+    .history-item {
+      margin-bottom: 10px;
       font-size: 14px;
+    }
+    .correct {
+      color: #2b9b49;
+      font-weight: bold;
+    }
+    .wrong {
+      color: #888;
     }
   </style>
 </head>
 <body>
   <!-- 创建 / 加入页 -->
   <section id="startPage" class="card">
-    <h1>创建或加入联机房间</h1>
-    <p class="tip">生成房间链接发给朋友，同一房间实时互通</p >
+    <h1>同词游戏｜创建或加入房间</h1>
+    <p class="tip">生成房间链接发给好友，一人出题，一人猜词</p >
     <button id="createRoomBtn" class="btn">创建新房间</button>
   </section>
 
   <!-- 房间页 -->
   <section id="roomPage" class="card hidden">
     <h1>房间已连接</h1>
-    <p class="tip">把链接发给好友打开，自动进同一个房间</p >
+    <p class="tip">把链接发给好友，同步进行游戏</p >
 
     <div class="link-row">
       <label>房间链接</label>
@@ -123,20 +132,28 @@
     <div id="copyMsg" class="message"></div>
 
     <div class="warn">
-      ✅ 使用公共 MQTT 中继实现跨设备联机；数据经过公共服务器，不要发送敏感内容。如果中继服务下线，联机就会失效。
+      ✅ 通过公共 MQTT 联机测试；仅用于体验，不适合正式发布。
     </div>
 
     <div class="link-row">
-      <label>房间消息日志</label>
-      <div id="logBox" class="log-box"></div>
-    </div>
-
-    <div class="link-row">
-      <label>发送测试消息（同步给所有人）</label>
+      <label>设置目标词（出题人）</label>
       <div class="link-wrap">
-        <input id="sendInput" placeholder="输入消息">
-        <button id="sendBtn" class="btn">发送</button>
+        <input id="secretWordInput" placeholder="输入要对方猜的词">
+        <button id="setWordBtn" class="btn">确定目标词</button>
       </div>
+    </div>
+
+    <div class="link-row">
+      <label>提交猜测（猜词方）</label>
+      <div class="link-wrap">
+        <input id="guessInput" placeholder="输入猜测的词语">
+        <button id="guessBtn" class="btn">提交猜测</button>
+      </div>
+    </div>
+
+    <div class="link-row">
+      <label>猜测记录</label>
+      <div id="historyBox" class="history-box"></div>
     </div>
 
     <div style="margin-top:24px;">
@@ -152,12 +169,15 @@
     const copyBtn = document.getElementById('copyBtn');
     const copyMsg = document.getElementById('copyMsg');
     const backBtn = document.getElementById('backBtn');
-    const logBox = document.getElementById('logBox');
-    const sendInput = document.getElementById('sendInput');
-    const sendBtn = document.getElementById('sendBtn');
+    const historyBox = document.getElementById('historyBox');
+    const secretWordInput = document.getElementById('secretWordInput');
+    const setWordBtn = document.getElementById('setWordBtn');
+    const guessInput = document.getElementById('guessInput');
+    const guessBtn = document.getElementById('guessBtn');
 
     let client = null;
     let roomId = '';
+    let targetWord = '';
     const broker = 'wss://broker.hivemq.com:8884/mqtt';
 
     function genRoomId(len = 8) {
@@ -169,12 +189,16 @@
       return id;
     }
 
-    function log(text) {
+    function addHistory(text, isCorrect = false) {
       const p = document.createElement('div');
-      p.className = 'log-item';
+      p.className = 'history-item ' + (isCorrect ? 'correct' : 'wrong');
       p.textContent = text;
-      logBox.appendChild(p);
-      logBox.scrollTop = logBox.scrollHeight;
+      historyBox.appendChild(p);
+      historyBox.scrollTop = historyBox.scrollHeight;
+    }
+
+    function clearHistory() {
+      historyBox.innerHTML = '';
     }
 
     function showStartPage() {
@@ -184,21 +208,28 @@
         client.end();
         client = null;
       }
+      targetWord = '';
+      clearHistory();
     }
 
     function showRoomPage(url) {
       shareLinkInput.value = url;
       copyMsg.textContent = '';
-      logBox.innerHTML = '';
       startPage.classList.add('hidden');
       roomPage.classList.remove('hidden');
     }
 
+    function publish(data) {
+      if (!client) return;
+      const topic = `game/room/${roomId}`;
+      client.publish(topic, JSON.stringify(data));
+    }
+
     async function connectRoom(rid) {
       roomId = rid;
-      const topic = `game/room/${roomId}`;
       const url = location.origin + location.pathname + '?room=' + roomId;
       showRoomPage(url);
+      clearHistory();
 
       try {
         client = mqtt.connect(broker, {
@@ -206,70 +237,40 @@
         });
 
         client.on('connect', () => {
-          log('✅ 已连上联机服务器，房间：' + roomId);
+          const topic = `game/room/${roomId}`;
           client.subscribe(topic);
-          publishMsg('有人加入房间');
+          addHistory('✅ 已进入房间，可以开始游戏');
         });
 
         client.on('message', (_, raw) => {
-          log('📩 ' + raw.toString());
+          let payload;
+          try {
+            payload = JSON.parse(raw.toString());
+          } catch {
+            return;
+          }
+          handleRemote(payload);
         });
 
         client.on('error', (err) => {
-          log('❌ 连接出错：' + err.message);
+          addHistory('❌ 连接出错：' + err.message);
         });
 
         client.on('close', () => {
-          log('🔌 连接已断开');
+          addHistory('🔌 房间连接断开');
         });
       } catch (e) {
-        log('❌ 创建连接失败：' + e.message);
+        addHistory('❌ 创建房间失败：' + e.message);
       }
     }
 
-    function publishMsg(txt) {
-      if (!client) return;
-      const topic = `game/room/${roomId}`;
-      client.publish(topic, txt);
-    }
-
-    // 创建房间
-    createRoomBtn.addEventListener('click', () => {
-      const rid = genRoomId();
-      connectRoom(rid);
-    });
-
-    // 返回
-    backBtn.addEventListener('click', showStartPage);
-
-    // 复制链接
-    copyBtn.addEventListener('click', async () => {
-      const text = shareLinkInput.value;
-      if (!text) return;
-      try {
-        await navigator.clipboard.writeText(text);
-        copyMsg.textContent = '✅ 复制成功！';
-      } catch {
-        shareLinkInput.select();
-        copyMsg.setSelectionRange(0, 99999);
-        copyMsg.textContent = '❌ 自动复制失败，请手动复制';
+    function handleRemote(payload) {
+      if (payload.type === 'set-target') {
+        targetWord = payload.word.trim().toLowerCase();
+        addHistory('📌 目标词已设置（对方已保存）');
       }
-    });
 
-    // 发送消息
-    sendBtn.addEventListener('click', () => {
-      const val = sendInput.value.trim();
-      if (!val) return;
-      publishMsg(val);
-      sendInput.value = '';
-    });
-
-    // 如果打开带 room 参数，直接进房间
-    const params = new URLSearchParams(location.search);
-    const joinId = params.get('room');
-    if (joinId) {
-      connectRoom(joinId);
-    }
-  </script>
-</body>
-</html>
+      if (payload.type === 'guess') {
+        const guess = payload.word.trim().toLowerCase();
+        if (guess === targetWord) {
+          v
