@@ -538,7 +538,7 @@
     <!-- 操作按钮 -->
     <div class="action-buttons">
       <button class="agree-btn" id="agreeBtn" disabled>✅ 认为词一样</button>
-      <button class="restart-btn" id="restartRoundBtn" disabled>🔄 重新开始</button>
+      <button class="restart-btn" id="restartRoundBtn">🔄 全部重来</button>
     </div>
 
     <!-- 历史记录 / 结束界面 -->
@@ -571,8 +571,9 @@
   let isHost = false;       // 是否是房主
   let myRole = 'p1';        // 自己的角色：p1 或 p2
   let roomId = '';          // 当前房间号
-  let state = null;         // 游戏状态（房主为权威源，客户端为镜像）
+  let state = null;         // 游戏状态（房主权威，客户端镜像）
   let retryCount = 0;       // 客户端连接重试次数
+  let nextRoundTimer = null;// 词不同时自动进入下一轮的定时器（仅房主端）
 
   /* =========================================================
    *  二、DOM 引用
@@ -603,7 +604,6 @@
    *  三、工具函数
    * ========================================================= */
 
-  // 浮动提示
   let toastTimer = null;
   function showToast(msg, duration = 2200) {
     toast.textContent = msg;
@@ -612,7 +612,6 @@
     toastTimer = setTimeout(() => toast.classList.remove('show'), duration);
   }
 
-  // 设置连接状态条
   function setConnStatus(text, type) {
     connStatus.textContent = text;
     connStatus.classList.remove('ok', 'err');
@@ -620,7 +619,7 @@
     if (type === 'err') connStatus.classList.add('err');
   }
 
-  // 生成随机房间号（6 位大写字母数字）
+  // 生成 6 位房间号
   function genRoomCode() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     let s = '';
@@ -628,41 +627,34 @@
     return s;
   }
 
-  // 创建初始游戏状态
+  // 初始游戏状态
   function initialState() {
     return {
       round: 1,
-      p1: { word: '', submitted: false },
-      p2: { word: '', submitted: false },
+      p1: { word: '', submitted: false, agreed: false },
+      p2: { word: '', submitted: false, agreed: false },
       lastP1: '',
       lastP2: '',
       history: [],
-      gameOver: false
+      gameOver: false,
+      pendingNextRound: false   // 双方已提交且词不同，等待自动下一轮
     };
   }
 
-  /* =========================================================
-   *  四、房主权威逻辑（所有状态变更都在房主端执行）
-   * ========================================================= */
-
-  // 检查本轮是否自动判定成功（双方都提交且词相同）
-  function checkRoundComplete() {
-    if (!state.p1.submitted || !state.p2.submitted) return;
-    if (state.p1.word !== '' && state.p1.word === state.p2.word) {
-      state.history.push({
-        round: state.round,
-        p1: state.p1.word,
-        p2: state.p2.word
-      });
-      state.lastP1 = state.p1.word;
-      state.lastP2 = state.p2.word;
-      state.gameOver = true;
+  function clearNextTimer() {
+    if (nextRoundTimer) {
+      clearTimeout(nextRoundTimer);
+      nextRoundTimer = null;
     }
   }
 
-  // 把本轮结果写入历史（防止重复写入）
+  /* =========================================================
+   *  四、房主权威逻辑
+   * ========================================================= */
+
+  // 把本轮词写入历史（防重复）
   function pushHistoryIfNeeded() {
-    if (!state.p1.submitted || !state.p2.submitted) return;
+    if (!state) return;
     if (state.history.some(h => h.round === state.round)) return;
     state.history.push({
       round: state.round,
@@ -671,7 +663,51 @@
     });
   }
 
-  // 处理一个动作（role 表示动作发起方：p1 / p2）
+  // 本轮成功：记录历史，结束游戏
+  function finishRound() {
+    clearNextTimer();
+    pushHistoryIfNeeded();
+    state.lastP1 = state.p1.word;
+    state.lastP2 = state.p2.word;
+    state.gameOver = true;
+    state.pendingNextRound = false;
+  }
+
+  // 进入下一轮：记录上一轮，重置双方提交状态
+  function goNextRound() {
+    clearNextTimer();
+    pushHistoryIfNeeded();
+    state.lastP1 = state.p1.word;
+    state.lastP2 = state.p2.word;
+    state.round += 1;
+    state.p1 = { word: '', submitted: false, agreed: false };
+    state.p2 = { word: '', submitted: false, agreed: false };
+    state.pendingNextRound = false;
+  }
+
+  // 一方提交后检查本轮情况
+  function afterSubmit() {
+    if (!state.p1.submitted || !state.p2.submitted) return;
+
+    if (state.p1.word === state.p2.word) {
+      // 词相同 → 自动成功结束
+      finishRound();
+    } else {
+      // 词不同 → 标记等待，2 秒后自动进入下一轮
+      // 期间双方都可点“认为词一样”，双方都认同则提前结束
+      state.pendingNextRound = true;
+      clearNextTimer();
+      nextRoundTimer = setTimeout(() => {
+        nextRoundTimer = null;
+        if (!state || state.gameOver) return;
+        goNextRound();
+        broadcastState();
+        render();
+      }, 2000);
+    }
+  }
+
+  // 处理一个动作（role: 'p1' 或 'p2'）
   function handleAction(role, action, data) {
     if (!isHost) return;
     if (!state) state = initialState();
@@ -680,36 +716,28 @@
     const mySlot = isP1 ? state.p1 : state.p2;
 
     if (action === 'submit') {
-      if (state.gameOver) return;
+      if (state.gameOver || state.pendingNextRound) return;
       if (mySlot.submitted) return;
       const word = ((data && data.word) || '').trim().slice(0, 20);
       if (!word) return;
       mySlot.word = word;
       mySlot.submitted = true;
-      checkRoundComplete();
+      afterSubmit();
 
     } else if (action === 'agree') {
-      // 认为词一样 → 直接判定成功并结束
-      if (state.gameOver) return;
-      if (!state.p1.submitted || !state.p2.submitted) return;
-      pushHistoryIfNeeded();
-      state.lastP1 = state.p1.word;
-      state.lastP2 = state.p2.word;
-      state.gameOver = true;
+      // 认为词一样：只有等待下一轮期间可用，且需双方都认同
+      if (state.gameOver || !state.pendingNextRound) return;
+      if (mySlot.agreed) return;
+      mySlot.agreed = true;
+      if (state.p1.agreed && state.p2.agreed) {
+        // 双方都认同 → 立即成功结束
+        finishRound();
+      }
+      // 只有一方认同则继续等待自动下一轮
 
-    } else if (action === 'restart') {
-      // 进入下一轮（需要双方都已提交）
-      if (state.gameOver) return;
-      if (!state.p1.submitted || !state.p2.submitted) return;
-      pushHistoryIfNeeded();
-      state.lastP1 = state.p1.word;
-      state.lastP2 = state.p2.word;
-      state.round += 1;
-      state.p1 = { word: '', submitted: false };
-      state.p2 = { word: '', submitted: false };
-
-    } else if (action === 'again') {
-      // 完全重置
+    } else if (action === 'restart' || action === 'again') {
+      // 全部重来（重置所有内容）
+      clearNextTimer();
       state = initialState();
     }
 
@@ -722,11 +750,11 @@
     if (isHost && conn && conn.open && state) {
       try {
         conn.send({ type: 'state', state: state });
-      } catch (e) { /* 忽略发送异常 */ }
+      } catch (e) { /* 忽略 */ }
     }
   }
 
-  // 发起动作（房主本地执行，客户端发送给房主）
+  // 发起动作（房主本地执行，客户端发消息给房主）
   function sendAction(action, data) {
     if (isHost) {
       handleAction(myRole, action, data);
@@ -747,7 +775,6 @@
    *  五、PeerJS 连接管理
    * ========================================================= */
 
-  // 创建房间（房主）
   function createRoom() {
     isHost = true;
     myRole = 'p1';
@@ -757,7 +784,7 @@
     setConnStatus('正在创建房间...');
     createRoomBtn.disabled = true;
 
-    // 用固定前缀 + 房间号作为 PeerJS ID，保证别人能连上
+    // 固定前缀 + 房间号作为 PeerJS ID，保证别人能连上
     peer = new Peer('tongci-' + code, { debug: 0 });
 
     peer.on('open', () => {
@@ -781,7 +808,6 @@
     peer.on('error', handlePeerError);
   }
 
-  // 加入房间（客户端）
   function joinRoom(code) {
     isHost = false;
     myRole = 'p2';
@@ -801,7 +827,6 @@
     peer.on('error', handlePeerError);
   }
 
-  // 客户端连接房主（带自动重试）
   function connectToHost() {
     if (!peer || peer.destroyed) return;
     if (conn && conn.open) return;
@@ -814,7 +839,6 @@
     }
   }
 
-  // 建立连接后的通用事件绑定
   function setupConnection() {
     if (!conn) return;
 
@@ -855,12 +879,10 @@
     });
   }
 
-  // PeerJS 错误统一处理
   function handlePeerError(err) {
     console.error('[PeerJS Error]', err);
 
     if (err.type === 'peer-unavailable') {
-      // 客户端：房主暂时不在线，自动重试
       if (!isHost) {
         if (retryCount < 10) {
           retryCount++;
@@ -888,28 +910,18 @@
    *  六、界面切换与渲染
    * ========================================================= */
 
-  // 显示房间 + 游戏区域
   function showRoomUI() {
     createRoomBtn.classList.add('hidden');
     roomArea.classList.remove('hidden');
     gamePlayArea.classList.remove('hidden');
-    roomIdDisplay.textContent = '房间: ' + roomId;
-    if (isHost) {
-      roomIdDisplay.textContent = '🏠 房间: ' + roomId;
-    } else {
-      roomIdDisplay.textContent = '👤 房间: ' + roomId;
-    }
+    roomIdDisplay.textContent = (isHost ? '🏠 房间: ' : '👤 房间: ') + roomId;
   }
 
-  // 渲染主界面
   function render() {
     if (!state) return;
 
     const me = (myRole === 'p1') ? state.p1 : state.p2;
-    const other = (myRole === 'p1') ? state.p2 : state.p1;
-    const bothSubmitted = state.p1.submitted && state.p2.submitted;
 
-    // 回合数
     roundCounter.textContent = '第 ' + state.round + ' 轮';
 
     /* ---------- 游戏已结束 ---------- */
@@ -940,52 +952,56 @@
     againBtn.classList.add('hidden');
     agreeBtn.classList.remove('hidden');
     restartRoundBtn.classList.remove('hidden');
+    restartRoundBtn.textContent = '🔄 全部重来';
+    restartRoundBtn.disabled = false;
 
-    // 输入框可用性
-    if (me.submitted) {
+    if (state.pendingNextRound) {
+      // 双方已提交但词不同，等待自动进入下一轮
       wordInput.disabled = true;
       submitWordBtn.disabled = true;
-    } else {
-      wordInput.disabled = false;
-      submitWordBtn.disabled = false;
-    }
 
-    // 状态文字
-    if (bothSubmitted) {
-      if (state.p1.word === state.p2.word) {
-        playerStatus.textContent = '词语相同！🎉';
-      } else {
-        playerStatus.textContent = '词语不同，再试一次吧～';
-      }
-      agreeBtn.disabled = false;
-      restartRoundBtn.disabled = false;
-    } else {
-      agreeBtn.disabled = true;
-      restartRoundBtn.disabled = true;
-      if (!me.submitted && !other.submitted) {
-        playerStatus.textContent = '轮到你了，输入一个词吧';
-      } else if (me.submitted) {
-        playerStatus.textContent = '✅ 你已提交，等待对方...';
-      } else {
-        playerStatus.textContent = '⏳ 对方已提交，等你啦';
-      }
-    }
-
-    // 上一轮 / 本轮 词展示
-    if (bothSubmitted) {
       lastRoundTitle.textContent = '本轮输入';
       lastP1Word.textContent = state.p1.word || '——';
       lastP2Word.textContent = state.p2.word || '——';
+
+      playerStatus.textContent = '词语不同，即将进入下一轮...';
+
+      // 认同按钮：自己已认同则禁用并提示等待对方
+      if (me.agreed) {
+        agreeBtn.textContent = '✔ 已认同，等待对方';
+        agreeBtn.disabled = true;
+      } else {
+        agreeBtn.textContent = '✅ 认为词一样';
+        agreeBtn.disabled = false;
+      }
+
     } else {
+      // 正常提交阶段
+      if (me.submitted) {
+        wordInput.disabled = true;
+        submitWordBtn.disabled = true;
+        playerStatus.textContent = '✅ 你已提交，等待对方...';
+      } else {
+        wordInput.disabled = false;
+        submitWordBtn.disabled = false;
+        if (!(myRole === 'p1' ? state.p2.submitted : state.p1.submitted)) {
+          playerStatus.textContent = '轮到你了，输入一个词吧';
+        } else {
+          playerStatus.textContent = '⏳ 对方已提交，等你啦';
+        }
+      }
+
       lastRoundTitle.textContent = '上一轮输入';
       lastP1Word.textContent = state.lastP1 || '——';
       lastP2Word.textContent = state.lastP2 || '——';
+
+      agreeBtn.textContent = '✅ 认为词一样';
+      agreeBtn.disabled = true;
     }
 
     renderHistory();
   }
 
-  // 渲染历史记录
   function renderHistory() {
     if (!state || !state.history || state.history.length === 0) {
       historyList.innerHTML = '<div class="empty-history">还没有记录，开始第一轮吧 ✨</div>';
@@ -1007,7 +1023,6 @@
     historyList.innerHTML = html;
   }
 
-  // 简单 HTML 转义，防止用户输入破坏结构
   function escapeHtml(str) {
     if (!str) return '——';
     return String(str)
@@ -1021,7 +1036,6 @@
    *  七、事件绑定
    * ========================================================= */
 
-  // 创建房间
   createRoomBtn.addEventListener('click', function () {
     if (peer && !peer.destroyed) {
       try { peer.destroy(); } catch (e) {}
@@ -1029,10 +1043,10 @@
     }
     conn = null;
     state = null;
+    clearNextTimer();
     createRoom();
   });
 
-  // 邀请好友（复制链接）
   inviteBtn.addEventListener('click', function () {
     if (!roomId) {
       showToast('房间尚未创建完成');
@@ -1053,7 +1067,6 @@
     }
   });
 
-  // 复制降级方案
   function fallbackCopy(text) {
     const ta = document.createElement('textarea');
     ta.value = text;
@@ -1070,7 +1083,6 @@
     document.body.removeChild(ta);
   }
 
-  // 提交词语
   submitWordBtn.addEventListener('click', function () {
     if (!state) { showToast('游戏尚未开始'); return; }
 
@@ -1091,7 +1103,6 @@
     sendAction('submit', { word: word });
   });
 
-  // 回车提交
   wordInput.addEventListener('keydown', function (e) {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -1099,17 +1110,19 @@
     }
   });
 
-  // 认为词一样
+  // 认为词一样（需双方都认同才结束）
   agreeBtn.addEventListener('click', function () {
     sendAction('agree');
   });
 
-  // 重新开始（进入下一轮）
+  // 全部重来（重置所有内容）
   restartRoundBtn.addEventListener('click', function () {
     sendAction('restart');
+    wordInput.value = '';
+    showToast('已全部重来 🌱');
   });
 
-  // 再来一把（完全重置）
+  // 再来一把（结束后重置）
   againBtn.addEventListener('click', function () {
     sendAction('again');
     wordInput.value = '';
@@ -1124,17 +1137,15 @@
     const roomFromUrl = params.get('room');
 
     if (roomFromUrl && roomFromUrl.trim()) {
-      // URL 带房间号 → 作为客户端加入
       joinRoom(roomFromUrl.trim().toUpperCase());
     } else {
-      // 没有房间号 → 显示创建房间按钮
       setConnStatus('点击下方按钮创建房间');
       render();
     }
   });
 
-  // 页面关闭时清理连接
   window.addEventListener('beforeunload', function () {
+    clearNextTimer();
     try {
       if (conn) conn.close();
       if (peer) peer.destroy();
