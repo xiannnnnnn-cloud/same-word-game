@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>同词游戏｜联机房间</title>
+  <title>接同词相遇</title>
+  <!-- 引入 MQTT 库，用来联机同步 -->
   <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
   <style>
     * {
@@ -12,265 +13,297 @@
       box-sizing: border-box;
       font-family: system-ui, -apple-system, sans-serif;
     }
+
     body {
-      background-color: #f5f7fa;
-      padding: 40px 20px;
-      max-width: 680px;
+      background-color: #fff7e6;
+      padding: 32px 20px;
+      max-width: 720px;
       margin: 0 auto;
     }
+
     h1 {
-      margin-bottom: 8px;
-      color: #222;
+      font-size: 28px;
+      color: #ff7b9c;
+      margin-bottom: 6px;
     }
+
     .tip {
-      color: #666;
-      margin-bottom: 24px;
+      color: #777;
+      margin-bottom: 22px;
     }
-    .btn {
-      display: inline-block;
-      padding: 12px 24px;
-      border: none;
-      border-radius: 12px;
-      background-color: #4080ff;
-      color: white;
-      font-size: 16px;
-      cursor: pointer;
-      transition: 0.2s;
+
+    .card {
+      background: #ffffff;
+      border-radius: 24px;
+      padding: 28px;
+      box-shadow: 0 8px 22px rgba(255, 123, 156, 0.12);
+      margin-bottom: 20px;
     }
-    .btn:hover {
-      background-color: #2e6ee8;
-    }
-    .btn.secondary {
-      background-color: white;
-      color: #333;
-      border: 1px solid #dcdfe6;
-    }
+
     .hidden {
       display: none !important;
     }
-    .card {
-      background: white;
-      padding: 28px;
-      border-radius: 16px;
-      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+
+    .btn {
+      padding: 13px 26px;
+      border: none;
+      border-radius: 999px;
+      background-color: #ff8fab;
+      color: white;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: 0.2s ease;
     }
-    .link-row {
-      margin: 20px 0;
+
+    .btn:hover {
+      background-color: #ff7096;
+      transform: translateY(-2px);
     }
-    .link-row label {
+
+    .btn.secondary {
+      background-color: #ffeef3;
+      color: #ff6b8f;
+    }
+
+    .btn:disabled {
+      background-color: #ffdce6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .row {
+      margin: 18px 0;
+    }
+
+    .row label {
       display: block;
-      margin-bottom: 8px;
-      font-weight: 500;
+      margin-bottom: 7px;
+      font-weight: 600;
+      color: #444;
     }
-    .link-wrap {
+
+    .input-wrap {
       display: flex;
       gap: 10px;
     }
-    input#shareLink,
-    input#guessInput,
-    input#secretWordInput {
+
+    input {
       flex: 1;
-      padding: 12px 14px;
-      border: 1px solid #dcdfe6;
-      border-radius: 10px;
-      font-size: 15px;
+      padding: 14px 16px;
+      border: 2px solid #ffe0e8;
+      border-radius: 20px;
+      font-size: 16px;
+      background-color: #fff8fa;
     }
-    .message {
-      margin-top: 16px;
-      min-height: 26px;
-      color: #2b9b49;
+
+    input:focus {
+      outline: none;
+      border-color: #ff8fab;
     }
-    .warn {
-      margin-top: 20px;
-      padding: 16px;
-      background-color: #eef4ff;
-      border-radius: 12px;
-      color: #2c5ea8;
+
+    .countdown-box {
+      text-align: center;
+      padding: 20px;
+      background-color: #fff0b8;
+      border-radius: 22px;
+      margin-bottom: 20px;
     }
-    .history-box {
-      margin-top: 20px;
-      height: 240px;
-      overflow-y: auto;
-      border: 1px solid #dcdfe6;
-      border-radius: 12px;
-      padding: 14px;
-      background: #f8f9fb;
-    }
-    .history-item {
-      margin-bottom: 10px;
-      font-size: 14px;
-    }
-    .correct {
-      color: #2b9b49;
+
+    #timerText {
+      font-size: 42px;
+      color: #d68c00;
       font-weight: bold;
     }
-    .wrong {
-      color: #888;
+
+    .log-title {
+      margin-bottom: 10px;
+      font-weight: 600;
+    }
+
+    .log-box {
+      height: 220px;
+      overflow-y: auto;
+      border: 2px solid #ffe6ed;
+      border-radius: 20px;
+      padding: 16px;
+      background-color: #fff8fa;
+    }
+
+    .log-item {
+      margin-bottom: 11px;
+      padding: 12px;
+      border-radius: 18px;
+      background-color: #fff;
+      border-left: 5px solid #ffb8cc;
+    }
+
+    .success-item {
+      border-left-color: #70d6a3;
+      background-color: #f0fff6;
+    }
+
+    .msg-tip {
+      margin-top: 14px;
+      min-height: 28px;
+      color: #2b9b49;
+    }
+
+    .warn-box {
+      padding: 16px;
+      background-color: #eef7ff;
+      border-radius: 20px;
+      color: #3b72b8;
+      margin-top: 20px;
     }
   </style>
 </head>
 <body>
-  <!-- 创建 / 加入页 -->
+  <!-- 开始页：创建 / 输入房间 -->
   <section id="startPage" class="card">
-    <h1>同词游戏｜创建或加入房间</h1>
-    <p class="tip">生成房间链接发给好友，一人出题，一人猜词</p >
-    <button id="createRoomBtn" class="btn">创建新房间</button>
+    <h1>接同词相遇 ✨</h1>
+    <p class="tip">和好友输入一样的词，相遇就算成功！</p >
+
+    <div class="row">
+      <button id="createRoomBtn" class="btn">创建新房间</button>
+    </div>
+
+    <div class="row">
+      <label>或者输入房间号加入</label>
+      <div class="input-wrap">
+        <input id="joinRoomInput" placeholder="例如：A123">
+        <button id="joinRoomBtn" class="btn secondary">加入房间</button>
+      </div>
+    </div>
   </section>
 
-  <!-- 房间页 -->
+  <!-- 房间页面 -->
   <section id="roomPage" class="card hidden">
-    <h1>房间已连接</h1>
-    <p class="tip">把链接发给好友，同步进行游戏</p >
-
-    <div class="link-row">
-      <label>房间链接</label>
-      <div class="link-wrap">
+    <div class="row">
+      <label>房间链接（发给好友）</label>
+      <div class="input-wrap">
         <input id="shareLink" readonly>
-        <button id="copyBtn" class="btn">复制链接</button>
+        <button id="copyLinkBtn" class="btn secondary">复制链接</button>
       </div>
-    </div>
-    <div id="copyMsg" class="message"></div>
-
-    <div class="warn">
-      ✅ 通过公共 MQTT 联机测试；仅用于体验，不适合正式发布。
+      <div id="copyTip" class="msg-tip"></div>
     </div>
 
-    <div class="link-row">
-      <label>设置目标词（出题人）</label>
-      <div class="link-wrap">
-        <input id="secretWordInput" placeholder="输入要对方猜的词">
-        <button id="setWordBtn" class="btn">确定目标词</button>
-      </div>
+    <div class="countdown-box">
+      <div id="timerText">60</div>
+      <p id="timerLabel">剩余时间（本轮）</p >
     </div>
 
-    <div class="link-row">
-      <label>提交猜测（猜词方）</label>
-      <div class="link-wrap">
-        <input id="guessInput" placeholder="输入猜测的词语">
-        <button id="guessBtn" class="btn">提交猜测</button>
+    <div class="row">
+      <label>输入你的词语</label>
+      <div class="input-wrap">
+        <input id="wordInput" placeholder="在这里输入词语">
+        <button id="submitBtn" class="btn">提交</button>
       </div>
     </div>
 
-    <div class="link-row">
-      <label>猜测记录</label>
-      <div id="historyBox" class="history-box"></div>
+    <div class="row">
+      <div class="log-title">所有提交记录</div>
+      <div id="logBox" class="log-box"></div>
     </div>
 
-    <div style="margin-top:24px;">
-      <button id="backBtn" class="btn secondary">返回，退出房间</button>
+    <div class="row">
+      <button id="restartBtn" class="btn secondary">重新开始游戏</button>
+    </div>
+
+    <div class="warn-box">
+      ⚠️ 使用公共 MQTT 测试联机；仅适合体验，如果服务下线就无法同步。
     </div>
   </section>
 
   <script>
+    // 获取页面元素
     const startPage = document.getElementById('startPage');
     const roomPage = document.getElementById('roomPage');
     const createRoomBtn = document.getElementById('createRoomBtn');
-    const shareLinkInput = document.getElementById('shareLink');
-    const copyBtn = document.getElementById('copyBtn');
-    const copyMsg = document.getElementById('copyMsg');
-    const backBtn = document.getElementById('backBtn');
-    const historyBox = document.getElementById('historyBox');
-    const secretWordInput = document.getElementById('secretWordInput');
-    const setWordBtn = document.getElementById('setWordBtn');
-    const guessInput = document.getElementById('guessInput');
-    const guessBtn = document.getElementById('guessBtn');
+    const joinRoomInput = document.getElementById('joinRoomInput');
+    const joinRoomBtn = document.getElementById('joinRoomBtn');
+    const shareLink = document.getElementById('shareLink');
+    const copyLinkBtn = document.getElementById('copyLinkBtn');
+    const copyTip = document.getElementById('copyTip');
+    const timerText = document.getElementById('timerText');
+    const timerLabel = document.getElementById('timerLabel');
+    const wordInput = document.getElementById('wordInput');
+    const submitBtn = document.getElementById('submitBtn');
+    const logBox = document.getElementById('logBox');
+    const restartBtn = document.getElementById('restartBtn');
 
-    let client = null;
-    let roomId = '';
-    let targetWord = '';
-    const broker = 'wss://broker.hivemq.com:8884/mqtt';
+    // MQTT 公共中继
+    const brokerUrl = 'wss://broker.hivemq.com:8884/mqtt';
+    let mqttClient = null;
+    let roomCode = '';
+    let topic = '';
+    let countdownTimer = null;
+    let remainSeconds = 60;
+    let myWord = '';
+    let otherWord = '';
+    let gameEnded = false;
 
-    function genRoomId(len = 8) {
-      const chars = 'abcdefghijkmnpqrstuvwxyz0123456789';
-      let id = '';
-      for (let i = 0; i < len; i++) {
-        id += chars.charAt(Math.floor(Math.random() * chars.length));
-      }
-      return id;
+    /**
+     * 生成房间号：一个大写字母 + 三位数字
+     */
+    function makeRoomCode() {
+      const letter = String.fromCharCode(65 + Math.floor(Math.random() * 26));
+      const num = String(Math.floor(Math.random() * 1000)).padStart(3, '0');
+      return letter + num;
     }
 
-    function addHistory(text, isCorrect = false) {
-      const p = document.createElement('div');
-      p.className = 'history-item ' + (isCorrect ? 'correct' : 'wrong');
-      p.textContent = text;
-      historyBox.appendChild(p);
-      historyBox.scrollTop = historyBox.scrollHeight;
+    /**
+     * 添加一条日志记录
+     * @param text - 显示文字
+     * @param isSuccess - 是否是成功相遇
+     */
+    function addLog(text, isSuccess = false) {
+      const item = document.createElement('div');
+      item.className = 'log-item';
+      if (isSuccess) item.classList.add('success-item');
+      item.textContent = text;
+      logBox.appendChild(item);
+      logBox.scrollTop = logBox.scrollHeight;
     }
 
-    function clearHistory() {
-      historyBox.innerHTML = '';
-    }
-
-    function showStartPage() {
-      startPage.classList.remove('hidden');
-      roomPage.classList.add('hidden');
-      if (client) {
-        client.end();
-        client = null;
-      }
-      targetWord = '';
-      clearHistory();
-    }
-
-    function showRoomPage(url) {
-      shareLinkInput.value = url;
-      copyMsg.textContent = '';
+    /**
+     * 切换页面到房间
+     */
+    function showRoom() {
       startPage.classList.add('hidden');
       roomPage.classList.remove('hidden');
     }
 
-    function publish(data) {
-      if (!client) return;
-      const topic = `game/room/${roomId}`;
-      client.publish(topic, JSON.stringify(data));
+    /**
+     * 返回首页，关闭连接
+     */
+    function backToStart() {
+      startPage.classList.remove('hidden');
+      roomPage.classList.add('hidden');
+      if (mqttClient) {
+        mqttClient.end();
+        mqttClient = null;
+      }
+      resetGame();
     }
 
-    async function connectRoom(rid) {
-      roomId = rid;
-      const url = location.origin + location.pathname + '?room=' + roomId;
-      showRoomPage(url);
-      clearHistory();
-
-      try {
-        client = mqtt.connect(broker, {
-          clientId: 'game_' + Math.random().toString(36).substr(2, 10)
-        });
-
-        client.on('connect', () => {
-          const topic = `game/room/${roomId}`;
-          client.subscribe(topic);
-          addHistory('✅ 已进入房间，可以开始游戏');
-        });
-
-        client.on('message', (_, raw) => {
-          let payload;
-          try {
-            payload = JSON.parse(raw.toString());
-          } catch {
-            return;
-          }
-          handleRemote(payload);
-        });
-
-        client.on('error', (err) => {
-          addHistory('❌ 连接出错：' + err.message);
-        });
-
-        client.on('close', () => {
-          addHistory('🔌 房间连接断开');
-        });
-      } catch (e) {
-        addHistory('❌ 创建房间失败：' + e.message);
-      }
+    /**
+     * 重置本局游戏状态
+     */
+    function resetGame() {
+      clearInterval(countdownTimer);
+      remainSeconds = 60;
+      myWord = '';
+      otherWord = '';
+      gameEnded = false;
+      logBox.innerHTML = '';
+      wordInput.value = '';
+      submitBtn.disabled = false;
+      updateTimerUI();
     }
 
-    function handleRemote(payload) {
-      if (payload.type === 'set-target') {
-        targetWord = payload.word.trim().toLowerCase();
-        addHistory('📌 目标词已设置（对方已保存）');
-      }
-
-      if (payload.type === 'guess') {
-        const guess = payload.word.trim().toLowerCase();
-        if (guess === targetWord) {
-          v
+    /**
+     * 更新倒计时显示
+     */
+    function updateTimerUI() {
+      tim
