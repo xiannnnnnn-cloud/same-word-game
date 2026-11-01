@@ -26,6 +26,7 @@
   .game-container {
     width: 100%;
     max-width: 480px;
+    position: relative;
     background: rgba(255, 255, 255, 0.88);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
@@ -40,6 +41,29 @@
     from { transform: scale(0.94); opacity: 0; }
     to   { transform: scale(1);    opacity: 1; }
   }
+
+  /* 右上角返回主页按钮 */
+  .home-btn {
+    position: absolute;
+    top: 14px;
+    right: 16px;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.95);
+    border: 2px solid #ffe2ea;
+    border-radius: 50%;
+    box-shadow: 0 4px 12px rgba(255, 150, 180, 0.3);
+    cursor: pointer;
+    z-index: 10;
+    font-size: 1.15rem;
+    transition: transform 0.15s;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .home-btn:active { transform: scale(0.9); }
 
   h1 {
     font-size: 1.85rem;
@@ -552,6 +576,9 @@
 <body>
 
 <div class="game-container">
+  <!-- 右上角返回主页 -->
+  <div class="home-btn hidden" id="homeBtn" title="返回主页">🏠</div>
+
   <!-- 标题 -->
   <h1><span>🌸</span> 同词相遇 <span>🌸</span></h1>
   <div class="subhead">✨ 心有灵犀一点通 ✨</div>
@@ -559,14 +586,14 @@
   <!-- 连接状态 -->
   <div class="conn-status" id="connStatus">未连接</div>
 
-  <!-- 创建房间按钮（初始显示） -->
-  <button class="create-room-btn" id="createRoomBtn">🏠 创建房间</button>
-
-  <!-- 输入房间号加入（初始显示） -->
-  <div class="join-room-area" id="joinRoomArea">
-    <input type="text" class="join-room-input" id="joinRoomInput"
-           placeholder="输入房间号加入" maxlength="6" autocomplete="off">
-    <button class="join-room-btn" id="joinRoomBtn">加入</button>
+  <!-- 主页区：创建房间 + 输入房间号 -->
+  <div id="homeArea">
+    <button class="create-room-btn" id="createRoomBtn">🏠 创建房间</button>
+    <div class="join-room-area">
+      <input type="text" class="join-room-input" id="joinRoomInput"
+             placeholder="输入房间号加入" maxlength="6" autocomplete="off">
+      <button class="join-room-btn" id="joinRoomBtn">加入</button>
+    </div>
   </div>
 
   <!-- 房间信息区（创建/加入后显示） -->
@@ -638,26 +665,33 @@
    *  一、全局状态
    * ========================================================= */
   let peer = null;              // PeerJS 实例
-  let conn = null;              // 数据连接
-  let isHost = false;           // 是否是房主
-  let myRole = 'p1';            // 自己的角色：p1 或 p2
+  let conn = null;              // 数据连接（主机最多只维护一个）
+  let isHost = false;           // 是否是当前房间的"主机"（原房主或接管者）
+  let myRole = 'p1';            // 自己的游戏座位：'p1' 或 'p2'
   let roomId = '';              // 当前房间号
-  let state = null;             // 游戏状态（房主权威，客户端镜像）
+  let state = null;             // 游戏状态（主机权威，客户端镜像）
   let retryCount = 0;           // 客户端连接重试次数
-  let nextRoundTimer = null;    // 词不同时自动下一轮的定时器（仅房主端）
+  let nextRoundTimer = null;    // 词不同时自动下一轮的定时器（仅主机端）
   let reconnectTimer = null;    // 客户端断线重连定时器
-  let hostRestoreAttempt = 0;   // 房主恢复房间号的重试次数
+  let hostRestoreAttempt = 0;   // 主机恢复房间号的重试次数
+  let takeoverAttempted = false;// 本次会话是否已尝试过接管
 
   // localStorage 会话键名
-  const LS_ROLE = 'tongci_role';    // 'host' | 'client'
-  const LS_ROOM = 'tongci_room';    // 房间号
-  const LS_STATE = 'tongci_state_'; // 房主状态快照前缀
+  const LS_IS_HOST = 'tongci_is_host';  // 'true' | 'false'
+  const LS_MY_ROLE = 'tongci_my_role';  // 'p1' | 'p2'
+  const LS_ROOM    = 'tongci_room';     // 房间号
+  const LS_STATE   = 'tongci_state_';   // 状态快照前缀（含房间号）
+
+  // 接管阈值：客户端连续连不上房主多少次后，尝试接管
+  const TAKEOVER_THRESHOLD = 8;
 
   /* =========================================================
    *  二、DOM 引用
    * ========================================================= */
   const $ = (id) => document.getElementById(id);
 
+  const homeBtn         = $('homeBtn');
+  const homeArea        = $('homeArea');
   const createRoomBtn   = $('createRoomBtn');
   const joinRoomArea    = $('joinRoomArea');
   const joinRoomInput   = $('joinRoomInput');
@@ -716,7 +750,10 @@
       .replace(/"/g, '&quot;');
   }
 
-  // 通用复制（含降级方案）
+  function otherSeat(role) {
+    return role === 'p1' ? 'p2' : 'p1';
+  }
+
   function copyText(text, successMsg) {
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text)
@@ -751,7 +788,8 @@
     try {
       if (roomId) {
         localStorage.setItem(LS_ROOM, roomId);
-        localStorage.setItem(LS_ROLE, isHost ? 'host' : 'client');
+        localStorage.setItem(LS_IS_HOST, isHost ? 'true' : 'false');
+        localStorage.setItem(LS_MY_ROLE, myRole);
       }
     } catch (e) { /* 隐私模式可能报错，忽略 */ }
   }
@@ -775,21 +813,27 @@
 
   function clearSession() {
     try {
-      localStorage.removeItem(LS_ROLE);
+      localStorage.removeItem(LS_IS_HOST);
+      localStorage.removeItem(LS_MY_ROLE);
       localStorage.removeItem(LS_ROOM);
       if (roomId) localStorage.removeItem(LS_STATE + roomId);
     } catch (e) {}
   }
 
   /* =========================================================
-   *  五、游戏状态与房主权威逻辑
+   *  五、游戏状态与主机权威逻辑
    * ========================================================= */
+
+  // 空座位：无数据、未提交、未认同、不在线
+  function emptySeat() {
+    return { word: '', submitted: false, agreed: false, online: false };
+  }
 
   function initialState() {
     return {
       round: 1,
-      p1: { word: '', submitted: false, agreed: false },
-      p2: { word: '', submitted: false, agreed: false },
+      p1: emptySeat(),
+      p2: emptySeat(),
       lastP1: '',
       lastP2: '',
       history: [],
@@ -805,7 +849,6 @@
     }
   }
 
-  // 把本轮词写入历史（防重复）
   function pushHistoryIfNeeded() {
     if (!state) return;
     if (state.history.some(h => h.round === state.round)) return;
@@ -816,7 +859,6 @@
     });
   }
 
-  // 本轮成功：记录历史，结束游戏
   function finishRound() {
     clearNextTimer();
     pushHistoryIfNeeded();
@@ -826,28 +868,28 @@
     state.pendingNextRound = false;
   }
 
-  // 进入下一轮：记录上一轮，重置双方提交状态
   function goNextRound() {
     clearNextTimer();
     pushHistoryIfNeeded();
     state.lastP1 = state.p1.word;
     state.lastP2 = state.p2.word;
     state.round += 1;
-    state.p1 = { word: '', submitted: false, agreed: false };
-    state.p2 = { word: '', submitted: false, agreed: false };
+    // 重置本轮提交状态，保留 online 标记
+    const p1Online = state.p1.online;
+    const p2Online = state.p2.online;
+    state.p1 = emptySeat();
+    state.p2 = emptySeat();
+    state.p1.online = p1Online;
+    state.p2.online = p2Online;
     state.pendingNextRound = false;
   }
 
-  // 双方都已提交后的判定
   function afterSubmit() {
     if (!state.p1.submitted || !state.p2.submitted) return;
 
     if (state.p1.word === state.p2.word) {
-      // 词相同 → 自动成功结束
       finishRound();
     } else {
-      // 词不同 → 标记等待，2 秒后自动进入下一轮
-      // 期间双方都可点"认为词一样"，双方都认同则提前结束
       state.pendingNextRound = true;
       clearNextTimer();
       nextRoundTimer = setTimeout(() => {
@@ -865,55 +907,61 @@
     if (!isHost) return;
     if (!state) state = initialState();
 
-    const isP1 = role === 'p1';
-    const mySlot = isP1 ? state.p1 : state.p2;
+    const slot = state[role];
+    if (!slot) return;
 
     if (action === 'submit') {
       if (state.gameOver || state.pendingNextRound) return;
-      if (mySlot.submitted) return;
+      if (slot.submitted) return;
       const word = ((data && data.word) || '').trim().slice(0, 20);
       if (!word) return;
-      mySlot.word = word;
-      mySlot.submitted = true;
+      slot.word = word;
+      slot.submitted = true;
       afterSubmit();
 
     } else if (action === 'agree') {
-      // 认为词一样：只有等待下一轮期间可用，且需双方都认同
       if (state.gameOver || !state.pendingNextRound) return;
-      if (mySlot.agreed) return;
-      mySlot.agreed = true;
+      if (slot.agreed) return;
+      slot.agreed = true;
       if (state.p1.agreed && state.p2.agreed) {
         finishRound();
       }
 
     } else if (action === 'restart' || action === 'again') {
       clearNextTimer();
+      const p1Online = state.p1.online;
+      const p2Online = state.p2.online;
       state = initialState();
+      state.p1.online = p1Online;
+      state.p2.online = p2Online;
     }
 
     broadcastState();
     render();
   }
 
-  // 房主广播状态给客户端 + 持久化
   function broadcastState() {
     if (!isHost) return;
     saveStateSnapshot();
     if (conn && conn.open && state) {
       try {
         conn.send({ type: 'state', state: state });
-      } catch (e) { /* 忽略 */ }
+      } catch (e) {}
     }
   }
 
-  // 发起动作（房主本地执行，客户端发给房主）
   function sendAction(action, data) {
     if (isHost) {
       handleAction(myRole, action, data);
     } else {
       if (conn && conn.open) {
         try {
-          conn.send({ type: 'action', action: action, data: data || {} });
+          conn.send({
+            type: 'action',
+            role: myRole,
+            action: action,
+            data: data || {}
+          });
         } catch (e) {
           showToast('发送失败，正在重连...');
           scheduleReconnect();
@@ -926,15 +974,133 @@
   }
 
   /* =========================================================
-   *  六、PeerJS 连接管理
+   *  六、连接处理：主机接收新玩家 / 断线 / 角色分配
    * ========================================================= */
 
-  // 创建房间（首次创建）
+  // 主机处理新连接（原房主或接管者都会用这个）
+  function handleNewConnection(connection) {
+    // 主机自己在 myRole 座位；对方应该是另一个座位
+    const other = otherSeat(myRole);
+
+    // 如果已经有连接了，拒绝（房间里最多 2 人）
+    if (conn && conn.open) {
+      try { connection.close(); } catch (e) {}
+      return;
+    }
+
+    // 另一个座位已经有在线玩家，拒绝
+    if (state && state[other] && state[other].online) {
+      try { connection.close(); } catch (e) {}
+      return;
+    }
+
+    // 分配另一个座位给新玩家，重置座位数据
+    if (state) {
+      state[other] = emptySeat();
+      state[other].online = true;
+
+      // 如果游戏已结束，新玩家加入时重置游戏
+      if (state.gameOver) {
+        const myOnline = true;
+        state = initialState();
+        state[myRole].online = myOnline;
+        state[other].online = true;
+      }
+    }
+
+    conn = connection;
+    setupConnection();
+
+    // 连接打开后发送角色分配 + 状态
+    conn.on('open', () => {
+      try {
+        conn.send({ type: 'assign', role: other });
+        conn.send({ type: 'state', state: state });
+      } catch (e) {}
+      setConnStatus('已连接 ✅', 'ok');
+      render();
+    });
+
+    broadcastState();
+    render();
+  }
+
+  // 建立连接后的通用事件绑定
+  function setupConnection() {
+    if (!conn) return;
+
+    conn.on('open', () => {
+      // 打开后行为放在 handleNewConnection / connectToHost 各自处理
+    });
+
+    conn.on('data', (data) => {
+      if (!data || typeof data !== 'object') return;
+
+      if (isHost) {
+        // 主机端接收对方动作 / 心跳 / hello
+        if (data.type === 'action') {
+          handleAction(data.role || 'p2', data.action, data.data);
+        } else if (data.type === 'hello') {
+          broadcastState();
+        } else if (data.type === 'ping') {
+          try { conn.send({ type: 'pong' }); } catch (e) {}
+        }
+      } else {
+        // 客户端接收角色分配 / 状态 / 心跳
+        if (data.type === 'state' && data.state) {
+          state = data.state;
+          render();
+        } else if (data.type === 'assign' && data.role) {
+          myRole = data.role;
+          // 如果之前输入了内容，清空避免混淆
+          wordInput.value = '';
+          saveSession();
+          render();
+        } else if (data.type === 'ping') {
+          try { conn.send({ type: 'pong' }); } catch (e) {}
+        }
+      }
+    });
+
+    conn.on('close', () => {
+      // 主机端：对方离线，释放对方座位
+      if (isHost) {
+        const other = otherSeat(myRole);
+        if (state && state[other]) {
+          state[other].online = false;
+          state[other].submitted = false;
+          state[other].agreed = false;
+          state[other].word = '';
+          broadcastState();
+        }
+        conn = null;
+        setConnStatus('好友已断开，等待新玩家加入...', 'err');
+        render();
+      } else {
+        conn = null;
+        setConnStatus('连接断开，正在重连...', 'err');
+        scheduleReconnect();
+        render();
+      }
+    });
+
+    conn.on('error', (err) => {
+      console.error('[Conn Error]', err);
+      if (!isHost) scheduleReconnect();
+    });
+  }
+
+  /* =========================================================
+   *  七、PeerJS：创建 / 加入 / 接管
+   * ========================================================= */
+
+  // 创建房间（原房主）
   function createRoom() {
     isHost = true;
     myRole = 'p1';
     roomId = genRoomCode();
     hostRestoreAttempt = 0;
+    takeoverAttempted = false;
 
     setConnStatus('正在创建房间...');
     createRoomBtn.disabled = true;
@@ -943,30 +1109,18 @@
 
     peer.on('open', () => {
       state = initialState();
+      state.p1.online = true;   // 自己是 p1，在线
       saveSession();
       saveStateSnapshot();
 
-      // 更新 URL，方便刷新后仍能识别为房主
-      try {
-        const url = new URL(window.location.href);
-        url.searchParams.set('room', roomId);
-        window.history.replaceState(null, '', url.toString());
-      } catch (e) {}
-
+      updateURLRoom(roomId);
       showRoomUI();
       render();
       setConnStatus('房间已创建，等待好友加入...', 'ok');
       showToast('房间创建成功！点击「邀请好友」或分享房间号');
     });
 
-    peer.on('connection', (connection) => {
-      if (conn && conn.open) {
-        try { connection.close(); } catch (e) {}
-        return;
-      }
-      conn = connection;
-      setupConnection();
-    });
+    peer.on('connection', handleNewConnection);
 
     peer.on('disconnected', () => {
       if (peer && !peer.destroyed) {
@@ -977,21 +1131,16 @@
     peer.on('error', handlePeerError);
   }
 
-  // 加入房间（手动输入房间号 / 从链接加入）
+  // 加入房间（作为客户端）
   function joinRoom(code) {
     isHost = false;
-    myRole = 'p2';
+    myRole = 'p2'; // 暂定，等主机 assign
     roomId = code.toUpperCase();
     retryCount = 0;
+    takeoverAttempted = false;
 
     saveSession();
-
-    // 更新 URL，方便刷新
-    try {
-      const url = new URL(window.location.href);
-      url.searchParams.set('room', roomId);
-      window.history.replaceState(null, '', url.toString());
-    } catch (e) {}
+    updateURLRoom(roomId);
 
     setConnStatus('正在连接房间 ' + roomId + ' ...');
     createRoomBtn.disabled = true;
@@ -1013,12 +1162,11 @@
     peer.on('error', handlePeerError);
   }
 
-  // 客户端连接房主
+  // 客户端连接主机
   function connectToHost() {
     if (!peer || peer.destroyed) return;
     if (conn && conn.open) return;
 
-    // 清理旧连接
     if (conn) {
       try { conn.close(); } catch (e) {}
       conn = null;
@@ -1032,60 +1180,7 @@
     }
   }
 
-  // 建立连接后的通用事件绑定
-  function setupConnection() {
-    if (!conn) return;
-
-    conn.on('open', () => {
-      setConnStatus('已连接 ✅', 'ok');
-      retryCount = 0;
-
-      if (isHost) {
-        // 房主把当前状态同步给新加入/重连的玩家
-        broadcastState();
-      } else {
-        // 客户端连上后请求一次最新状态，保证恢复时不会看到旧数据
-        try { conn.send({ type: 'hello' }); } catch (e) {}
-      }
-      render();
-    });
-
-    conn.on('data', (data) => {
-      if (!data || typeof data !== 'object') return;
-
-      if (isHost) {
-        if (data.type === 'action') {
-          handleAction('p2', data.action, data.data);
-        } else if (data.type === 'hello') {
-          // 客户端重连后请求状态
-          broadcastState();
-        }
-      } else {
-        if (data.type === 'state' && data.state) {
-          state = data.state;
-          render();
-        }
-      }
-    });
-
-    conn.on('close', () => {
-      conn = null;
-      if (isHost) {
-        // 房主保持 Peer 在线，等待客户端重连
-        setConnStatus('好友已断开，等待重连...', 'err');
-      } else {
-        setConnStatus('连接断开，正在重连...', 'err');
-        scheduleReconnect();
-      }
-      render();
-    });
-
-    conn.on('error', (err) => {
-      console.error('[Conn Error]', err);
-    });
-  }
-
-  // 客户端断线重连调度（防抖）
+  // 客户端断线重连调度
   function scheduleReconnect() {
     if (isHost) return;
     if (reconnectTimer) return;
@@ -1099,26 +1194,24 @@
     }, 2500);
   }
 
-  // PeerJS 错误统一处理
+  // PeerJS 错误处理
   function handlePeerError(err) {
     console.error('[PeerJS Error]', err);
 
     if (err.type === 'peer-unavailable') {
-      // 客户端：房主暂时不在线，持续重试
       if (!isHost) {
-        if (retryCount < 30) {
-          retryCount++;
-          setConnStatus('等待房主上线... (' + retryCount + '/30)');
+        retryCount++;
+        if (retryCount < TAKEOVER_THRESHOLD) {
+          setConnStatus('等待房主上线... (' + retryCount + '/' + TAKEOVER_THRESHOLD + ')');
           setTimeout(() => {
             if (!conn || !conn.open) connectToHost();
           }, 3000);
-        } else {
-          setConnStatus('无法连接，请稍后刷新重试', 'err');
-          showToast('找不到该房间，请确认房间号后重试');
+        } else if (!takeoverAttempted) {
+          // 达到阈值 → 尝试接管
+          tryTakeover();
         }
       }
     } else if (err.type === 'unavailable-id') {
-      // 房主端房间号被占用（旧连接未释放），交给恢复逻辑处理
       if (!isHost) {
         setConnStatus('网络异常，请刷新重试', 'err');
       }
@@ -1137,40 +1230,119 @@
   }
 
   /* =========================================================
-   *  七、会话恢复（刷新 / 切回前台）
+   *  八、接管：客户端长时间连不上房主，接管房间成为新主机
    * ========================================================= */
 
-  // 房主恢复：用相同 Peer ID 重新注册，等待好友重连
-  function resumeHost() {
-    isHost = true;
-    myRole = 'p1';
-    hostRestoreAttempt = 0;
+  function tryTakeover() {
+    takeoverAttempted = true;
+    setConnStatus('房主长时间未响应，正在接管房间...');
 
-    // 恢复房主端状态快照
-    const snapshot = loadStateSnapshot();
-    if (snapshot) {
-      state = snapshot;
-      // 如果之前在等待自动下一轮，重启定时器
-      if (state.pendingNextRound && !state.gameOver) {
-        // 清掉旧定时器（刷新前已丢失），重新起一个
-        clearNextTimer();
-        nextRoundTimer = setTimeout(() => {
-          nextRoundTimer = null;
-          if (!state || state.gameOver) return;
-          goNextRound();
-          broadcastState();
-          render();
-        }, 2000);
-      }
-    } else {
-      state = initialState();
+    // 销毁旧 peer
+    if (peer && !peer.destroyed) {
+      try { peer.destroy(); } catch (e) {}
     }
 
+    // 用原房主 ID 注册
+    peer = new Peer('tongci-' + roomId, { debug: 0 });
+
+    peer.on('open', () => {
+      // 接管成功 → 成为新主机
+      isHost = true;
+
+      // 恢复状态快照
+      const snapshot = loadStateSnapshot();
+      state = snapshot || initialState();
+
+      // 重置在线与座位数据：自己在线、对方离线并清空
+      state[myRole].online = true;
+      state[myRole].submitted = false;
+      state[myRole].agreed = false;
+      state[myRole].word = '';
+      state[otherSeat(myRole)] = emptySeat();
+
+      // 保留历史记录、轮数等
+      state.gameOver = false;
+      state.pendingNextRound = false;
+
+      saveSession();
+      saveStateSnapshot();
+
+      setConnStatus('房间已接管，等待新玩家加入...', 'ok');
+      showToast('已接管房间，可以邀请新玩家加入');
+      render();
+    });
+
+    peer.on('connection', handleNewConnection);
+
+    peer.on('disconnected', () => {
+      if (peer && !peer.destroyed) {
+        try { peer.reconnect(); } catch (e) {}
+      }
+    });
+
+    peer.on('error', (err) => {
+      if (err.type === 'unavailable-id') {
+        // 房主又回来了 → 降级为客户端，尝试连接
+        setConnStatus('房主已上线，正在连接...');
+        isHost = false;
+        takeoverAttempted = false;
+        retryCount = 0;
+
+        if (peer && !peer.destroyed) {
+          try { peer.destroy(); } catch (e) {}
+        }
+
+        peer = new Peer(null, { debug: 0 });
+        peer.on('open', () => { connectToHost(); });
+        peer.on('disconnected', () => {
+          if (peer && !peer.destroyed) {
+            try { peer.reconnect(); } catch (e) {}
+          }
+        });
+        peer.on('error', handlePeerError);
+      } else {
+        handlePeerError(err);
+      }
+    });
+  }
+
+  /* =========================================================
+   *  九、会话恢复（刷新 / 切回前台）
+   * ========================================================= */
+
+  // 恢复为主机：使用相同 Peer ID 重新注册
+  function resumeHost() {
+    isHost = true;
+    // myRole 由调用方设置（原房主 p1 / 接管者 p2）
+    hostRestoreAttempt = 0;
+    takeoverAttempted = true; // 已是主机，无需再次接管
+
+    // 恢复状态
+    const snapshot = loadStateSnapshot();
+    state = snapshot || initialState();
+
+    // 自己是主机 → 自己在线，对方离线并清空（对手需要重连）
+    state[myRole].online = true;
+    state[myRole].submitted = false;
+    state[myRole].agreed = false;
+    state[myRole].word = '';
+
+    const other = otherSeat(myRole);
+    state[other] = emptySeat();
+
+    // 检查是否还在等自动下一轮，重启定时器
+    if (state.pendingNextRound && !state.gameOver) {
+      // 由于刷新导致定时器丢失，简单处理：立即进入下一轮
+      state.pendingNextRound = false;
+    }
+
+    saveSession();
+    saveStateSnapshot();
     showRoomUI();
     render();
     setConnStatus('正在恢复房间...');
 
-    setTimeout(() => createHostPeerWithRetry(), 600);
+    setTimeout(createHostPeerWithRetry, 600);
   }
 
   function createHostPeerWithRetry() {
@@ -1192,14 +1364,7 @@
       hostRestoreAttempt = 0;
     });
 
-    peer.on('connection', (connection) => {
-      if (conn && conn.open) {
-        try { connection.close(); } catch (e) {}
-        return;
-      }
-      conn = connection;
-      setupConnection();
-    });
+    peer.on('connection', handleNewConnection);
 
     peer.on('disconnected', () => {
       if (peer && !peer.destroyed) {
@@ -1209,20 +1374,19 @@
 
     peer.on('error', (err) => {
       if (err.type === 'unavailable-id') {
-        // 旧 ID 还没释放，2 秒后重试
         setConnStatus('房间恢复中，请稍候...');
-        setTimeout(() => createHostPeerWithRetry(), 2000);
+        setTimeout(createHostPeerWithRetry, 2000);
       } else {
         handlePeerError(err);
       }
     });
   }
 
-  // 客户端恢复：新建 Peer，主动去连房主
+  // 恢复为客户端：新建 Peer，主动去连主机
   function resumeClient() {
     isHost = false;
-    myRole = 'p2';
     retryCount = 0;
+    takeoverAttempted = false;
 
     showRoomUI();
     setConnStatus('正在重连房间 ' + roomId + ' ...');
@@ -1248,20 +1412,40 @@
   }
 
   /* =========================================================
-   *  八、界面切换与渲染
+   *  十、界面切换与渲染
    * ========================================================= */
 
+  function updateURLRoom(code) {
+    try {
+      const url = new URL(window.location.href);
+      if (code) {
+        url.searchParams.set('room', code);
+      } else {
+        url.searchParams.delete('room');
+      }
+      url.hash = '';
+      window.history.replaceState(null, '', url.toString());
+    } catch (e) {}
+  }
+
   function showRoomUI() {
-    createRoomBtn.classList.add('hidden');
-    joinRoomArea.classList.add('hidden');
+    homeArea.classList.add('hidden');
+    homeBtn.classList.remove('hidden');
     roomArea.classList.remove('hidden');
     gamePlayArea.classList.remove('hidden');
     roomIdDisplay.textContent = (isHost ? '🏠 房间: ' : '👤 房间: ') + roomId;
   }
 
+  function showHomeUI() {
+    homeArea.classList.remove('hidden');
+    homeBtn.classList.add('hidden');
+    roomArea.classList.add('hidden');
+    gamePlayArea.classList.add('hidden');
+  }
+
   function render() {
     if (!state) {
-      // 客户端刚恢复时可能还没有拿到状态，显示等待提示
+      // 客户端刚连上还没收到状态时
       wordInput.disabled = true;
       submitWordBtn.disabled = true;
       roundCounter.textContent = '第 — 轮';
@@ -1271,8 +1455,8 @@
       return;
     }
 
-    const me = (myRole === 'p1') ? state.p1 : state.p2;
-    const other = (myRole === 'p1') ? state.p2 : state.p1;
+    const me = state[myRole];
+    const other = state[otherSeat(myRole)];
 
     roundCounter.textContent = '第 ' + state.round + ' 轮';
 
@@ -1307,8 +1491,11 @@
     restartRoundBtn.classList.remove('hidden');
     restartRoundBtn.textContent = '🔄 全部重来';
 
+    // 对手是否在线
+    const otherOnline = other && other.online;
+
     if (state.pendingNextRound) {
-      // 双方已提交但词不同，等待自动进入下一轮
+      // 双方已提交但词不同
       wordInput.disabled = true;
       submitWordBtn.disabled = true;
       wordInput.classList.remove('other-submitted');
@@ -1328,7 +1515,7 @@
       }
 
     } else {
-      // 正常提交阶段（双方都提交前都可输入）
+      // 正常提交阶段
       if (me.submitted) {
         wordInput.disabled = true;
         submitWordBtn.disabled = true;
@@ -1338,8 +1525,11 @@
         wordInput.disabled = false;
         submitWordBtn.disabled = false;
 
-        if (other.submitted) {
-          // 对方已提交，我方还没提交 → 强化提示 + 输入框脉冲
+        if (!otherOnline) {
+          // 对方离线 → 提示等待新玩家
+          playerStatus.textContent = '⏳ 等待另一位玩家加入...';
+          wordInput.classList.remove('other-submitted');
+        } else if (other && other.submitted) {
           playerStatus.textContent = '⏳ 对方已提交，等你啦！';
           wordInput.classList.add('other-submitted');
         } else {
@@ -1381,8 +1571,53 @@
   }
 
   /* =========================================================
-   *  九、事件绑定
+   *  十一、返回主页
    * ========================================================= */
+
+  function goHome() {
+    // 清理连接与状态
+    clearNextTimer();
+    if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+    try {
+      if (conn) conn.close();
+      if (peer) peer.destroy();
+    } catch (e) {}
+    conn = null;
+    peer = null;
+    state = null;
+    isHost = false;
+    myRole = 'p1';
+    retryCount = 0;
+    takeoverAttempted = false;
+    hostRestoreAttempt = 0;
+
+    // 清理会话
+    clearSession();
+    roomId = '';
+    updateURLRoom('');
+
+    // 恢复界面
+    wordInput.value = '';
+    joinRoomInput.value = '';
+    createRoomBtn.disabled = false;
+    joinRoomBtn.disabled = false;
+    showHomeUI();
+    setConnStatus('点击下方按钮创建房间，或输入房间号加入');
+    renderHistory();
+
+    showToast('已返回主页');
+  }
+
+  /* =========================================================
+   *  十二、事件绑定
+   * ========================================================= */
+
+  // 返回主页
+  homeBtn.addEventListener('click', function () {
+    if (confirm('确定返回主页吗？当前房间的连接将断开。')) {
+      goHome();
+    }
+  });
 
   // 创建房间
   createRoomBtn.addEventListener('click', function () {
@@ -1409,7 +1644,6 @@
     joinRoom(code);
   });
 
-  // 房间号输入框回车
   joinRoomInput.addEventListener('keydown', function (e) {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -1429,13 +1663,10 @@
       showToast('房间尚未创建完成');
       return;
     }
-
     const url = new URL(window.location.href);
     url.searchParams.set('room', roomId);
     url.hash = '';
-    const link = url.toString();
-
-    copyText(link, '🔗 邀请链接已复制！发给好友吧');
+    copyText(url.toString(), '🔗 邀请链接已复制！发给好友吧');
   });
 
   // 提交词语
@@ -1449,8 +1680,8 @@
       return;
     }
 
-    const me = (myRole === 'p1') ? state.p1 : state.p2;
-    if (me.submitted) {
+    const me = state[myRole];
+    if (me && me.submitted) {
       showToast('你已经提交过啦');
       return;
     }
@@ -1459,7 +1690,6 @@
     sendAction('submit', { word: word });
   });
 
-  // 输入框回车提交
   wordInput.addEventListener('keydown', function (e) {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -1467,19 +1697,16 @@
     }
   });
 
-  // 认为词一样（需双方都认同才结束）
   agreeBtn.addEventListener('click', function () {
     sendAction('agree');
   });
 
-  // 全部重来（重置所有内容）
   restartRoundBtn.addEventListener('click', function () {
     sendAction('restart');
     wordInput.value = '';
     showToast('已全部重来 🌱');
   });
 
-  // 再来一把（结束后重置）
   againBtn.addEventListener('click', function () {
     sendAction('again');
     wordInput.value = '';
@@ -1487,18 +1714,20 @@
   });
 
   /* =========================================================
-   *  十、页面可见性监听（切回前台自动修复连接）
+   *  十三、页面可见性监听
    * ========================================================= */
   document.addEventListener('visibilitychange', function () {
     if (document.visibilityState !== 'visible') return;
 
-    // 1) Peer 实例已被回收（页面被完全刷新/回收），走完整会话恢复
+    // Peer 实例被回收 → 走完整恢复
     if (!peer || peer.destroyed) {
       const savedRoom = localStorage.getItem(LS_ROOM);
-      const savedRole = localStorage.getItem(LS_ROLE);
+      const savedIsHost = localStorage.getItem(LS_IS_HOST);
+      const savedRole = localStorage.getItem(LS_MY_ROLE);
       if (savedRoom && savedRole) {
         roomId = savedRoom;
-        if (savedRole === 'host') {
+        myRole = savedRole;
+        if (savedIsHost === 'true') {
           resumeHost();
         } else {
           resumeClient();
@@ -1507,39 +1736,38 @@
       return;
     }
 
-    // 2) 信令层断线，重连
     if (peer.disconnected) {
       try { peer.reconnect(); } catch (e) {}
     }
 
-    // 3) 数据通道异常
     if (!conn || !conn.open) {
-      if (!isHost) {
-        scheduleReconnect();
-      }
+      if (!isHost) scheduleReconnect();
     }
   });
 
   /* =========================================================
-   *  十一、页面初始化
+   *  十四、初始化
    * ========================================================= */
   window.addEventListener('DOMContentLoaded', function () {
     const params = new URLSearchParams(window.location.search);
     const roomFromUrl = params.get('room');
     const savedRoom = localStorage.getItem(LS_ROOM);
-    const savedRole = localStorage.getItem(LS_ROLE);
+    const savedIsHost = localStorage.getItem(LS_IS_HOST);
+    const savedRole = localStorage.getItem(LS_MY_ROLE);
 
     // 1) URL 带房间号
     if (roomFromUrl && roomFromUrl.trim()) {
       const room = roomFromUrl.trim().toUpperCase();
       roomId = room;
 
-      if (savedRole === 'host' && savedRoom === room) {
-        // 同一个人刷新，恢复房主
-        resumeHost();
-      } else if (savedRole === 'client' && savedRoom === room) {
-        // 同一个客户端刷新，恢复连接
-        resumeClient();
+      if (savedRoom === room && savedRole) {
+        // 同一人刷新 → 按原角色恢复
+        myRole = savedRole;
+        if (savedIsHost === 'true') {
+          resumeHost();
+        } else {
+          resumeClient();
+        }
       } else {
         // 首次通过链接加入
         joinRoom(room);
@@ -1547,10 +1775,11 @@
       return;
     }
 
-    // 2) 本地有会话记录（刷新/切后台恢复）
+    // 2) 本地有会话记录
     if (savedRoom && savedRole) {
       roomId = savedRoom;
-      if (savedRole === 'host') {
+      myRole = savedRole;
+      if (savedIsHost === 'true') {
         resumeHost();
       } else {
         resumeClient();
@@ -1559,8 +1788,8 @@
     }
 
     // 3) 全新用户
+    showHomeUI();
     setConnStatus('点击下方按钮创建房间，或输入房间号加入');
-    render();
   });
 
   window.addEventListener('beforeunload', function () {
