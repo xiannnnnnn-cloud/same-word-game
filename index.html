@@ -1,969 +1,1147 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>同词相遇 💕 双人默契小游戏</title>
-  <style>
-    /* 全局样式：明亮、圆润、可爱 */
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-      font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', system-ui, -apple-system, sans-serif;
-    }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>同词相遇 💕 双人默契小游戏</title>
+<style>
+  /* ===== 全局样式：明亮、圆润、可爱 ===== */
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', system-ui, -apple-system, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
 
-    body {
-      background: linear-gradient(145deg, #fff9e6 0%, #ffe6f0 100%);
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 16px;
-    }
+  body {
+    background: linear-gradient(145deg, #fff9e6 0%, #ffe6f0 55%, #e8f5ff 100%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
 
-    .game-container {
-      width: 100%;
-      max-width: 500px;
-      background: #ffffffd6;
-      backdrop-filter: blur(8px);
-      border-radius: 48px;
-      box-shadow: 0 20px 40px rgba(255, 150, 180, 0.25), 0 8px 20px rgba(255, 200, 220, 0.4);
-      padding: 28px 22px 32px;
-      border: 2px solid #fff0f5;
-      transition: all 0.2s ease;
-    }
+  .game-container {
+    width: 100%;
+    max-width: 480px;
+    background: rgba(255, 255, 255, 0.88);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-radius: 44px;
+    box-shadow: 0 20px 44px rgba(255, 150, 180, 0.28), 0 8px 20px rgba(255, 200, 220, 0.42);
+    padding: 26px 20px 28px;
+    border: 2px solid #fff0f5;
+    animation: popIn 0.5s cubic-bezier(0.3, 1.4, 0.6, 1);
+  }
 
-    h1 {
-      font-size: 2rem;
-      text-align: center;
-      color: #ff6f91;
-      letter-spacing: 2px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      margin-bottom: 8px;
-      text-shadow: 0 4px 8px #ffe2e9;
-    }
+  @keyframes popIn {
+    from { transform: scale(0.94); opacity: 0; }
+    to   { transform: scale(1);    opacity: 1; }
+  }
 
-    h1 span {
-      font-size: 2rem;
-    }
+  h1 {
+    font-size: 1.85rem;
+    text-align: center;
+    color: #ff6f91;
+    letter-spacing: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    text-shadow: 0 4px 8px #ffe2e9;
+  }
 
-    .subhead {
-      text-align: center;
-      color: #b68b9c;
-      font-size: 0.9rem;
-      margin-bottom: 24px;
-      background: #fff0f5;
-      display: inline-block;
-      padding: 6px 18px;
-      border-radius: 30px;
-      letter-spacing: 1px;
-      width: fit-content;
-      margin-left: auto;
-      margin-right: auto;
-      border: 1px dashed #ffb6c1;
-    }
+  h1 span { font-size: 1.6rem; }
 
-    /* 房间区域 */
-    .room-area {
-      background: #fff6f9;
-      border-radius: 32px;
-      padding: 16px 18px;
-      margin-bottom: 20px;
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      border: 2px solid #ffdae0;
-    }
+  .subhead {
+    text-align: center;
+    color: #b68b9c;
+    font-size: 0.85rem;
+    margin: 0 auto 16px;
+    background: #fff0f5;
+    display: block;
+    padding: 6px 18px;
+    border-radius: 30px;
+    letter-spacing: 1px;
+    width: fit-content;
+    border: 1px dashed #ffb6c1;
+  }
 
-    .room-info {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
+  /* ===== 连接状态条 ===== */
+  .conn-status {
+    text-align: center;
+    font-size: 0.78rem;
+    color: #a78a97;
+    background: #fdf2f6;
+    border-radius: 30px;
+    padding: 7px 14px;
+    margin-bottom: 14px;
+    border: 1px solid #ffe2ea;
+    transition: all 0.3s;
+  }
+  .conn-status.ok { color: #3a9268; background: #e8f9f0; border-color: #bce9d2; }
+  .conn-status.err { color: #c9586f; background: #ffeef2; border-color: #ffc7d4; }
 
-    .room-badge {
-      background: #ffb6c1;
-      color: #ffffff;
-      font-weight: 600;
-      padding: 8px 16px;
-      border-radius: 40px;
-      font-size: 1rem;
-      box-shadow: 0 6px 0 #e09aa9;
-      letter-spacing: 0.5px;
-      word-break: break-all;
-    }
+  /* ===== 按钮通用 ===== */
+  button {
+    border: none;
+    cursor: pointer;
+    font-weight: 700;
+    transition: transform 0.1s, box-shadow 0.1s, opacity 0.2s;
+    -webkit-user-select: none;
+    user-select: none;
+  }
 
-    .invite-btn, .restart-btn, .submit-btn, .agree-btn {
-      border: none;
-      cursor: pointer;
-      font-weight: 600;
-      transition: all 0.15s;
-      border-radius: 60px;
-      box-shadow: 0 6px 0 #d9a7b4;
-      transform: translateY(0);
-    }
+  button:disabled {
+    opacity: 0.45;
+    pointer-events: none;
+    cursor: not-allowed;
+  }
 
-    .invite-btn:active, .restart-btn:active, .submit-btn:active, .agree-btn:active {
-      transform: translateY(4px);
-      box-shadow: 0 2px 0 #d9a7b4;
-    }
+  /* 创建房间按钮 */
+  .create-room-btn {
+    background: linear-gradient(180deg, #ffb6c1, #ff9db0);
+    color: #fff;
+    font-size: 1.15rem;
+    padding: 17px 20px;
+    width: 100%;
+    border-radius: 60px;
+    box-shadow: 0 8px 0 #d98a9b, 0 12px 20px #ffd3df;
+    letter-spacing: 2px;
+    text-shadow: 0 1px 3px #d97a90;
+  }
+  .create-room-btn:active {
+    transform: translateY(5px);
+    box-shadow: 0 3px 0 #d98a9b, 0 6px 12px #ffd3df;
+  }
 
-    .invite-btn {
-      background: #ffe066;
-      color: #9b6b3e;
-      padding: 10px 20px;
-      font-size: 0.95rem;
-      box-shadow: 0 6px 0 #e6c34d;
-      border: 2px solid #fff3c9;
-    }
+  /* ===== 房间区域 ===== */
+  .room-area {
+    background: #fff6f9;
+    border-radius: 30px;
+    padding: 14px 16px;
+    margin-bottom: 16px;
+    border: 2px solid #ffdae0;
+    animation: popIn 0.35s ease;
+  }
 
-    .invite-btn:active {
-      box-shadow: 0 2px 0 #e6c34d;
-    }
+  .room-info {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
 
-    .create-room-btn {
-      background: #ffb6c1;
-      border: none;
-      color: white;
-      font-weight: 700;
-      font-size: 1.2rem;
-      padding: 18px 20px;
-      width: 100%;
-      border-radius: 60px;
-      box-shadow: 0 10px 0 #d98a9b;
-      margin-bottom: 16px;
-      cursor: pointer;
-      transition: all 0.1s;
-      letter-spacing: 2px;
-    }
+  .room-badge {
+    background: linear-gradient(180deg, #ffb6c1, #ff9db0);
+    color: #fff;
+    font-weight: 700;
+    padding: 9px 16px;
+    border-radius: 40px;
+    font-size: 0.95rem;
+    letter-spacing: 1px;
+    box-shadow: 0 4px 0 #e09aa9;
+    word-break: break-all;
+    text-shadow: 0 1px 2px #d97a90;
+  }
 
-    .create-room-btn:active {
-      transform: translateY(6px);
-      box-shadow: 0 4px 0 #d98a9b;
-    }
+  .invite-btn {
+    background: linear-gradient(180deg, #ffe066, #ffd23f);
+    color: #8a6220;
+    padding: 9px 18px;
+    font-size: 0.9rem;
+    border-radius: 40px;
+    box-shadow: 0 5px 0 #e0b93c;
+  }
+  .invite-btn:active {
+    transform: translateY(4px);
+    box-shadow: 0 1px 0 #e0b93c;
+  }
 
-    /* 词卡区域 */
-    .word-section {
-      background: #fffafc;
-      border-radius: 32px;
-      padding: 22px 16px;
-      margin-bottom: 20px;
-      border: 3px solid #ffe1e8;
-      box-shadow: inset 0 0 0 4px #ffffff;
-    }
+  .room-hint {
+    font-size: 0.75rem;
+    color: #c9a3b0;
+    margin-top: 9px;
+    text-align: center;
+  }
 
-    .turn-indicator {
-      font-size: 0.95rem;
-      color: #ff8da1;
-      font-weight: 600;
-      display: flex;
-      justify-content: center;
-      gap: 12px;
-      margin-bottom: 12px;
-    }
+  /* ===== 游戏区域 ===== */
+  .word-section {
+    background: #fffafc;
+    border-radius: 32px;
+    padding: 18px 14px;
+    margin-bottom: 14px;
+    border: 3px solid #ffe1e8;
+    box-shadow: inset 0 0 0 4px #fff;
+  }
 
-    .round-badge {
-      background: #ffcad4;
-      padding: 4px 14px;
-      border-radius: 30px;
-      color: #a34e62;
-      font-weight: 700;
-    }
+  .turn-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+  }
 
-    .input-group {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
+  .round-badge {
+    background: #ffcad4;
+    padding: 5px 14px;
+    border-radius: 30px;
+    color: #a34e62;
+    font-weight: 700;
+    font-size: 0.85rem;
+    white-space: nowrap;
+  }
 
-    .word-input {
-      width: 100%;
-      padding: 18px 20px;
-      border-radius: 60px;
-      border: 3px solid #ffb7c5;
-      background: white;
-      font-size: 1.2rem;
-      text-align: center;
-      outline: none;
-      color: #5e3e4a;
-      font-weight: 500;
-      letter-spacing: 1px;
-      transition: 0.2s;
-    }
+  #playerStatus {
+    font-size: 0.82rem;
+    color: #c2839a;
+    font-weight: 600;
+  }
 
-    .word-input:focus {
-      border-color: #ff6f91;
-      box-shadow: 0 0 0 6px #ffe2e9;
-    }
+  .input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
 
-    .word-input::placeholder {
-      color: #dbb7c1;
-      font-size: 1rem;
-      font-weight: 400;
-    }
+  .word-input {
+    width: 100%;
+    padding: 16px 20px;
+    border-radius: 60px;
+    border: 3px solid #ffb7c5;
+    background: #fff;
+    font-size: 1.15rem;
+    text-align: center;
+    outline: none;
+    color: #5e3e4a;
+    font-weight: 600;
+    letter-spacing: 1px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .word-input:focus {
+    border-color: #ff6f91;
+    box-shadow: 0 0 0 6px #ffe2e9;
+  }
+  .word-input:disabled {
+    background: #fdf3f6;
+    color: #bda3ae;
+    border-color: #ffdde4;
+  }
+  .word-input::placeholder {
+    color: #dcbcc6;
+    font-size: 0.95rem;
+    font-weight: 400;
+    letter-spacing: 0;
+  }
 
-    .submit-btn {
-      background: #8bd3dd;
-      color: #1e5c67;
-      font-size: 1.1rem;
-      padding: 16px;
-      box-shadow: 0 6px 0 #6baeb8;
-      border: 2px solid #c1ecf2;
-    }
+  .submit-btn {
+    background: linear-gradient(180deg, #8bd3dd, #6dc4d0);
+    color: #15505a;
+    font-size: 1.05rem;
+    padding: 15px;
+    border-radius: 60px;
+    box-shadow: 0 6px 0 #579aa6, 0 8px 14px #cdeff3;
+    letter-spacing: 1px;
+  }
+  .submit-btn:active {
+    transform: translateY(4px);
+    box-shadow: 0 2px 0 #579aa6, 0 4px 8px #cdeff3;
+  }
 
-    .submit-btn:active {
-      box-shadow: 0 2px 0 #6baeb8;
-    }
+  /* 上一轮展示 */
+  .last-round-box {
+    background: #fff2f6;
+    border-radius: 26px;
+    padding: 13px 15px;
+    margin-top: 16px;
+    border-left: 7px solid #ffb7c5;
+  }
 
-    .submit-btn:disabled {
-      opacity: 0.5;
-      transform: translateY(4px);
-      box-shadow: 0 2px 0 #6baeb8;
-      pointer-events: none;
-    }
+  .last-round-title {
+    font-weight: 700;
+    color: #ff6f91;
+    font-size: 0.88rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 9px;
+  }
 
-    /* 上一轮结果 */
-    .last-round-box {
-      background: #fff2f6;
-      border-radius: 28px;
-      padding: 16px 18px;
-      margin-top: 18px;
-      border-left: 8px solid #ffb7c5;
-      font-size: 1rem;
-      color: #6e4a56;
-    }
+  .last-round-words {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    gap: 6px;
+    font-weight: 700;
+  }
 
-    .last-round-title {
-      font-weight: 700;
-      color: #ff6f91;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      margin-bottom: 10px;
-    }
+  .last-round-words span {
+    background: #fff;
+    padding: 7px 14px;
+    border-radius: 40px;
+    box-shadow: 0 2px 6px #ffd9e2;
+    color: #b3536b;
+    min-width: 70px;
+    text-align: center;
+    font-size: 0.95rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 130px;
+  }
 
-    .last-round-words {
-      display: flex;
-      justify-content: space-around;
-      background: #ffeef2;
-      border-radius: 40px;
-      padding: 10px;
-      font-weight: 600;
-    }
+  /* ===== 操作按钮 ===== */
+  .action-buttons {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
 
-    .last-round-words span {
-      background: white;
-      padding: 6px 18px;
-      border-radius: 40px;
-      box-shadow: 0 2px 6px #ffd9e2;
-      color: #b3536b;
-      min-width: 80px;
-      text-align: center;
-    }
+  .agree-btn {
+    background: linear-gradient(180deg, #b0e9ca, #8fdcb5);
+    color: #1f6446;
+    padding: 15px 12px;
+    flex: 1;
+    font-size: 0.92rem;
+    border-radius: 40px;
+    box-shadow: 0 6px 0 #79c6a0;
+    letter-spacing: 0.5px;
+  }
+  .agree-btn:active {
+    transform: translateY(4px);
+    box-shadow: 0 2px 0 #79c6a0;
+  }
 
-    /* 按钮区域 */
-    .action-buttons {
-      display: flex;
-      gap: 12px;
-      margin-top: 16px;
-      flex-wrap: wrap;
-    }
+  .restart-btn {
+    background: linear-gradient(180deg, #ffd966, #ffcc33);
+    color: #7d5614;
+    padding: 15px 12px;
+    flex: 1;
+    font-size: 0.92rem;
+    border-radius: 40px;
+    box-shadow: 0 6px 0 #dcb03a;
+    letter-spacing: 0.5px;
+  }
+  .restart-btn:active {
+    transform: translateY(4px);
+    box-shadow: 0 2px 0 #dcb03a;
+  }
 
-    .agree-btn {
-      background: #b0e9ca;
-      color: #2a6b4b;
-      padding: 16px 20px;
-      flex: 1;
-      font-size: 1rem;
-      box-shadow: 0 6px 0 #86c9a8;
-      border: 2px solid #d3f7e6;
-    }
+  /* ===== 历史面板 ===== */
+  .history-panel {
+    background: #fff5f8;
+    border-radius: 30px;
+    padding: 18px 14px;
+    border: 2px solid #ffd9e2;
+  }
 
-    .agree-btn:active {
-      box-shadow: 0 2px 0 #86c9a8;
-    }
+  .history-title {
+    font-size: 1.05rem;
+    color: #ff6f91;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    font-weight: 700;
+  }
 
-    .restart-btn {
-      background: #ffd966;
-      color: #8a5d1a;
-      padding: 16px 20px;
-      flex: 1;
-      font-size: 1rem;
-      box-shadow: 0 6px 0 #dbb84a;
-      border: 2px solid #fff1b8;
-    }
+  .history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 240px;
+    overflow-y: auto;
+    padding-right: 4px;
+  }
 
-    .restart-btn:active {
-      box-shadow: 0 2px 0 #dbb84a;
-    }
+  .history-list::-webkit-scrollbar { width: 5px; }
+  .history-list::-webkit-scrollbar-thumb {
+    background: #ffc7d4; border-radius: 10px;
+  }
 
-    /* 历史记录 / 结束界面 */
-    .history-panel {
-      background: #fff5f8;
-      border-radius: 32px;
-      padding: 22px 16px;
-      margin-top: 18px;
-      border: 2px solid #ffd9e2;
-    }
+  .history-item {
+    background: #fff;
+    padding: 10px 14px;
+    border-radius: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-weight: 600;
+    color: #694e58;
+    box-shadow: 0 3px 6px #ffe2ea;
+    border: 1px solid #ffe2ea;
+    font-size: 0.88rem;
+    animation: popIn 0.3s ease;
+  }
 
-    .history-title {
-      font-size: 1.3rem;
-      color: #ff6f91;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      margin-bottom: 12px;
-      font-weight: 700;
-    }
+  .history-item .round-num {
+    color: #ff8da1;
+    font-weight: 700;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    margin-right: 8px;
+  }
 
-    .history-list {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      max-height: 220px;
-      overflow-y: auto;
-      padding-right: 6px;
-    }
+  .history-item .words {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
 
-    .history-item {
-      background: white;
-      padding: 12px 16px;
-      border-radius: 30px;
-      display: flex;
-      justify-content: space-between;
-      font-weight: 500;
-      color: #694e58;
-      box-shadow: 0 4px 6px #ffe2ea;
-      border: 1px solid #ffe2ea;
-    }
+  .history-item .words span {
+    background: #fef0f4;
+    padding: 3px 11px;
+    border-radius: 30px;
+    color: #b3536b;
+    font-weight: 700;
+    max-width: 110px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 
-    .history-item .round-num {
-      color: #ff8da1;
-      font-weight: 700;
-      margin-right: 12px;
-    }
+  .empty-history {
+    text-align: center;
+    color: #dcb9c4;
+    padding: 14px 8px;
+    font-size: 0.85rem;
+  }
 
-    .history-item .words {
-      display: flex;
-      gap: 8px;
-    }
+  /* 成功信息 */
+  .success-message {
+    text-align: center;
+    font-size: 1.35rem;
+    color: #ff6f91;
+    font-weight: 800;
+    margin: 14px 0 6px;
+    line-height: 1.5;
+    text-shadow: 0 4px 8px #ffd3df;
+    animation: popIn 0.45s cubic-bezier(0.3, 1.5, 0.6, 1);
+  }
+  .success-message small {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #c2839a;
+    margin-top: 6px;
+    text-shadow: none;
+  }
 
-    .history-item .words span {
-      background: #fef0f4;
-      padding: 4px 14px;
-      border-radius: 30px;
-      color: #b3536b;
-      font-weight: 600;
-    }
+  /* 再来一把 */
+  .again-btn {
+    background: linear-gradient(180deg, #ffb6c1, #ff9db0);
+    color: #fff;
+    font-size: 1.15rem;
+    padding: 16px;
+    width: 100%;
+    border-radius: 60px;
+    box-shadow: 0 8px 0 #d98a9b, 0 10px 18px #ffd3df;
+    margin-top: 14px;
+    letter-spacing: 2px;
+    text-shadow: 0 1px 3px #d97a90;
+  }
+  .again-btn:active {
+    transform: translateY(5px);
+    box-shadow: 0 3px 0 #d98a9b;
+  }
 
-    .success-message {
-      text-align: center;
-      font-size: 1.5rem;
-      color: #ff6f91;
-      font-weight: 800;
-      margin-bottom: 16px;
-      text-shadow: 0 4px 8px #ffd3df;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-    }
+  /* ===== 工具类 ===== */
+  .hidden { display: none !important; }
 
-    .again-btn {
-      background: #ffb6c1;
-      border: none;
-      color: white;
-      font-weight: 700;
-      font-size: 1.3rem;
-      padding: 18px;
-      width: 100%;
-      border-radius: 60px;
-      box-shadow: 0 10px 0 #d98a9b;
-      margin-top: 16px;
-      cursor: pointer;
-      transition: all 0.1s;
-      letter-spacing: 2px;
-    }
-
-    .again-btn:active {
-      transform: translateY(6px);
-      box-shadow: 0 4px 0 #d98a9b;
-    }
-
-    .hidden {
-      display: none !important;
-    }
-
-    /* 提示信息 */
-    .toast {
-      position: fixed;
-      bottom: 30px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: #ffb6c1;
-      color: white;
-      font-weight: 600;
-      padding: 12px 28px;
-      border-radius: 40px;
-      box-shadow: 0 10px 20px #fbb6c2;
-      transition: 0.3s;
-      z-index: 999;
-      opacity: 0;
-      pointer-events: none;
-      white-space: nowrap;
-    }
-
-    .toast.show {
-      opacity: 1;
-      bottom: 50px;
-    }
-
-    /* 等待对方状态 */
-    .waiting-tip {
-      font-size: 0.9rem;
-      color: #cd8b9c;
-      text-align: center;
-      margin-top: 6px;
-    }
-  </style>
+  /* 浮动提示 */
+  .toast {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%) translateY(14px);
+    background: #ff9db0;
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.92rem;
+    padding: 12px 26px;
+    border-radius: 40px;
+    box-shadow: 0 10px 24px rgba(255, 130, 160, 0.5);
+    transition: opacity 0.3s, transform 0.3s;
+    z-index: 9999;
+    opacity: 0;
+    pointer-events: none;
+    white-space: nowrap;
+    max-width: 90vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+</style>
 </head>
 <body>
-  <div class="game-container" id="gameContainer">
-    <!-- 主标题 -->
-    <h1>
-      <span>🌸</span> 同词相遇 <span>🌸</span>
-    </h1>
-    <div class="subhead">✨ 心有灵犀一点通 ✨</div>
 
-    <!-- 创建房间按钮（初始显示） -->
-    <button class="create-room-btn" id="createRoomBtn">🏠 创建房间</button>
+<div class="game-container">
+  <!-- 标题 -->
+  <h1><span>🌸</span> 同词相遇 <span>🌸</span></h1>
+  <div class="subhead">✨ 心有灵犀一点通 ✨</div>
 
-    <!-- 房间区域（创建后显示） -->
-    <div id="roomArea" class="room-area hidden">
-      <div class="room-info">
-        <div class="room-badge" id="roomIdDisplay">房间: ---</div>
-        <button class="invite-btn" id="inviteBtn">📋 邀请好友</button>
-      </div>
-      <div style="font-size:0.8rem; color:#b68b9c; width:100%; margin-top:8px;">点击邀请自动复制链接</div>
+  <!-- 连接状态 -->
+  <div class="conn-status" id="connStatus">未连接</div>
+
+  <!-- 创建房间按钮（初始显示） -->
+  <button class="create-room-btn" id="createRoomBtn">🏠 创建房间</button>
+
+  <!-- 房间信息区（创建/加入后显示） -->
+  <div id="roomArea" class="room-area hidden">
+    <div class="room-info">
+      <div class="room-badge" id="roomIdDisplay">房间: ---</div>
+      <button class="invite-btn" id="inviteBtn">📋 邀请好友</button>
     </div>
-
-    <!-- 游戏主区域 -->
-    <div id="gamePlayArea" class="hidden">
-      <!-- 回合 & 输入区 -->
-      <div class="word-section">
-        <div class="turn-indicator">
-          <span class="round-badge" id="roundCounter">第 1 轮</span>
-          <span id="playerStatus">等待输入...</span>
-        </div>
-        <div class="input-group">
-          <input type="text" class="word-input" id="wordInput" placeholder="输入你的词..." maxlength="20" autocomplete="off">
-          <button class="submit-btn" id="submitWordBtn">提交 ✨</button>
-        </div>
-
-        <!-- 上一轮结果 -->
-        <div class="last-round-box" id="lastRoundBox">
-          <div class="last-round-title"><span>🕊️</span> 上一轮输入</div>
-          <div class="last-round-words">
-            <span id="lastP1Word">——</span>
-            <span>💞</span>
-            <span id="lastP2Word">——</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- 操作按钮：认为相同 / 重新开始 -->
-      <div class="action-buttons">
-        <button class="agree-btn" id="agreeBtn">✅ 认为词一样</button>
-        <button class="restart-btn" id="restartRoundBtn">🔄 重新开始</button>
-      </div>
-
-      <!-- 历史记录 & 胜利界面 -->
-      <div class="history-panel" id="historyPanel">
-        <div class="history-title"><span>📜</span> 相遇轨迹 <span>📜</span></div>
-        <div class="history-list" id="historyList">
-          <!-- 动态渲染历史 -->
-        </div>
-        <div id="successMessage" class="success-message hidden"></div>
-        <button id="againBtn" class="again-btn hidden">🌸 再来一把</button>
-      </div>
-    </div>
-
-    <!-- 小提示浮层 -->
-    <div class="toast" id="toast"></div>
+    <div class="room-hint">点击邀请自动复制链接，发给好友即可加入</div>
   </div>
 
-  <script>
-    (function() {
-      // ---------- 游戏状态 ----------
-      // 使用 localStorage 模拟双方数据同步 (同浏览器内多个标签页)
-      // 但为了在单一页面也能完整演示，内部维护虚拟对手（如果只有一个玩家，模拟另一个玩家自动随机）
-      // 但为了真实双人体验，我们使用 localStorage 跨标签通信。同一浏览器下打开两个页面即可。
+  <!-- 游戏主区域 -->
+  <div id="gamePlayArea" class="hidden">
+    <!-- 输入区 -->
+    <div class="word-section">
+      <div class="turn-indicator">
+        <span class="round-badge" id="roundCounter">第 1 轮</span>
+        <span id="playerStatus">准备中...</span>
+      </div>
 
-      // 核心存储键名
-      const STORAGE_KEY = 'tongci_xiangyu_game';
+      <div class="input-group">
+        <input type="text" class="word-input" id="wordInput"
+               placeholder="输入你想的词..." maxlength="20" autocomplete="off">
+        <button class="submit-btn" id="submitWordBtn">提交 ✨</button>
+      </div>
 
-      // 当前页面的玩家身份: 'p1' 或 'p2' (通过 URL 参数区分)
-      let myRole = 'p1'; // 默认房主 p1
+      <!-- 上一轮 / 本轮结果 -->
+      <div class="last-round-box">
+        <div class="last-round-title">
+          <span>🕊️</span> <span id="lastRoundTitle">上一轮输入</span>
+        </div>
+        <div class="last-round-words">
+          <span id="lastP1Word">——</span>
+          <span>💞</span>
+          <span id="lastP2Word">——</span>
+        </div>
+      </div>
+    </div>
 
-      // 游戏状态 (从 localStorage 读取)
-      let gameState = {
-        roomId: '',
-        round: 1,
-        // 当前轮是否已提交
-        p1Submitted: false,
-        p2Submitted: false,
-        p1Word: '',
-        p2Word: '',
-        // 上一轮展示 (上一轮双方词)
-        lastP1: '',
-        lastP2: '',
-        // 历史记录 [{round, p1, p2}]
-        history: [],
-        // 游戏是否结束 (成功相遇)
-        gameOver: false,
-        // 认为词一样的标记 (用于触发结束)
-        forceAgree: false,
-        // 创建房间时间戳 (用于邀请)
-        createdAt: Date.now()
-      };
+    <!-- 操作按钮 -->
+    <div class="action-buttons">
+      <button class="agree-btn" id="agreeBtn" disabled>✅ 认为词一样</button>
+      <button class="restart-btn" id="restartRoundBtn" disabled>🔄 重新开始</button>
+    </div>
 
-      // DOM 元素
-      const createRoomBtn = document.getElementById('createRoomBtn');
-      const roomArea = document.getElementById('roomArea');
-      const roomIdDisplay = document.getElementById('roomIdDisplay');
-      const inviteBtn = document.getElementById('inviteBtn');
-      const gamePlayArea = document.getElementById('gamePlayArea');
-      const roundCounter = document.getElementById('roundCounter');
-      const playerStatus = document.getElementById('playerStatus');
-      const wordInput = document.getElementById('wordInput');
-      const submitWordBtn = document.getElementById('submitWordBtn');
-      const lastP1Word = document.getElementById('lastP1Word');
-      const lastP2Word = document.getElementById('lastP2Word');
-      const agreeBtn = document.getElementById('agreeBtn');
-      const restartRoundBtn = document.getElementById('restartRoundBtn');
-      const historyList = document.getElementById('historyList');
-      const successMessage = document.getElementById('successMessage');
-      const againBtn = document.getElementById('againBtn');
-      const toast = document.getElementById('toast');
-      const historyPanel = document.getElementById('historyPanel');
+    <!-- 历史记录 / 结束界面 -->
+    <div class="history-panel">
+      <div class="history-title"><span>📜</span> 相遇轨迹 <span>📜</span></div>
+      <div class="history-list" id="historyList">
+        <div class="empty-history">还没有记录，开始第一轮吧 ✨</div>
+      </div>
+      <div id="successMessage" class="success-message hidden"></div>
+      <button id="againBtn" class="again-btn hidden">🌸 再来一把</button>
+    </div>
+  </div>
 
-      // ---------- 辅助函数 ----------
-      // 显示浮层提示
-      function showToast(msg, duration = 2000) {
-        toast.textContent = msg;
-        toast.classList.add('show');
-        clearTimeout(window.toastTimer);
-        window.toastTimer = setTimeout(() => {
-          toast.classList.remove('show');
-        }, duration);
-      }
+  <!-- 浮动提示 -->
+  <div class="toast" id="toast"></div>
+</div>
 
-      // 生成随机房间号 (6位)
-      function generateRoomId() {
-        return Math.random().toString(36).substring(2, 8).toUpperCase();
-      }
+<!-- PeerJS：免费公共信令服务器，用于 WebRTC 建立点对点连接 -->
+<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 
-      // 保存状态到 localStorage
-      function saveState() {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(gameState));
-      }
+<script>
+(function () {
+  'use strict';
 
-      // 从 localStorage 加载状态 (并更新 UI)
-      function loadState() {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        if (saved) {
-          try {
-            const parsed = JSON.parse(saved);
-            // 检查房间是否存在且未过期 (简单处理)
-            if (parsed && parsed.roomId) {
-              gameState = parsed;
-            }
-          } catch (e) {}
-        }
-        updateUI();
-      }
+  /* =========================================================
+   *  一、全局状态
+   * ========================================================= */
+  let peer = null;          // PeerJS 实例
+  let conn = null;          // 数据连接
+  let isHost = false;       // 是否是房主
+  let myRole = 'p1';        // 自己的角色：p1 或 p2
+  let roomId = '';          // 当前房间号
+  let state = null;         // 游戏状态（房主为权威源，客户端为镜像）
+  let retryCount = 0;       // 客户端连接重试次数
 
-      // 检测 URL 参数，确定角色
-      function detectRole() {
-        const params = new URLSearchParams(window.location.search);
-        const roomParam = params.get('room');
-        if (roomParam) {
-          // 如果 URL 中有房间号，则作为 p2 加入
-          myRole = 'p2';
-          // 如果本地没有这个房间，或者房间号不同，则重置
-          const saved = localStorage.getItem(STORAGE_KEY);
-          if (saved) {
-            try {
-              const parsed = JSON.parse(saved);
-              if (parsed.roomId !== roomParam) {
-                // 房间号不匹配，但还是要进入房间? 我们可以尝试加入新房间，但为了简单，将房间号强制设为这个
-                // 这里我们给一个友好提示并允许创建同名房间 (实际中应由房主创建)
-                // 但为了演示，若房间不存在则自动创建并把自己当做p1? 但URL已指定p2，我们直接创建一个等待房主的状态
-                gameState = {
-                  ...gameState,
-                  roomId: roomParam,
-                  round: 1,
-                  p1Submitted: false,
-                  p2Submitted: false,
-                  p1Word: '',
-                  p2Word: '',
-                  lastP1: '',
-                  lastP2: '',
-                  history: [],
-                  gameOver: false,
-                  forceAgree: false,
-                  createdAt: Date.now()
-                };
-                saveState();
-              }
-            } catch (e) {}
-          } else {
-            // 无状态，但URL有房间号，视为加入；创建一个状态但标记myRole=p2
-            gameState = {
-              ...gameState,
-              roomId: roomParam,
-              round: 1,
-              p1Submitted: false,
-              p2Submitted: false,
-              p1Word: '',
-              p2Word: '',
-              lastP1: '',
-              lastP2: '',
-              history: [],
-              gameOver: false,
-              forceAgree: false,
-              createdAt: Date.now()
-            };
-            saveState();
-          }
-          // 如果房间号存在，显示房间
-          roomArea.classList.remove('hidden');
-          createRoomBtn.classList.add('hidden');
-          gamePlayArea.classList.remove('hidden');
-          roomIdDisplay.textContent = `房间: ${gameState.roomId}`;
-        } else {
-          // 无房间参数，作为 p1 (如果之前有房间也可继续)
-          const saved = localStorage.getItem(STORAGE_KEY);
-          if (saved) {
-            try {
-              const parsed = JSON.parse(saved);
-              if (parsed.roomId) {
-                // 已有房间，自动进入
-                gameState = parsed;
-                myRole = 'p1'; // 假设同一浏览器第一个是p1
-                roomArea.classList.remove('hidden');
-                createRoomBtn.classList.add('hidden');
-                gamePlayArea.classList.remove('hidden');
-                roomIdDisplay.textContent = `房间: ${gameState.roomId}`;
-              }
-            } catch (e) {}
-          }
-        }
-        updateUI();
-      }
+  /* =========================================================
+   *  二、DOM 引用
+   * ========================================================= */
+  const $ = (id) => document.getElementById(id);
 
-      // 更新界面
-      function updateUI() {
-        // 如果游戏已结束，显示结束界面
-        if (gameState.gameOver) {
-          // 隐藏输入区域的一些交互元素，但保留历史
-          wordInput.disabled = true;
-          submitWordBtn.disabled = true;
-          agreeBtn.classList.add('hidden');
-          restartRoundBtn.classList.add('hidden');
-          successMessage.classList.remove('hidden');
-          const rounds = gameState.history.length;
-          successMessage.innerHTML = `🎉 成功相遇！ 🎉<br><span style="font-size:1rem;">经过 ${rounds} 轮，你们选择了相同的词</span>`;
-          againBtn.classList.remove('hidden');
-          // 显示历史
-          renderHistory();
-          return;
-        } else {
-          wordInput.disabled = false;
-          submitWordBtn.disabled = false;
-          agreeBtn.classList.remove('hidden');
-          restartRoundBtn.classList.remove('hidden');
-          successMessage.classList.add('hidden');
-          againBtn.classList.add('hidden');
-        }
+  const createRoomBtn   = $('createRoomBtn');
+  const roomArea        = $('roomArea');
+  const roomIdDisplay   = $('roomIdDisplay');
+  const inviteBtn       = $('inviteBtn');
+  const gamePlayArea    = $('gamePlayArea');
+  const connStatus      = $('connStatus');
+  const roundCounter    = $('roundCounter');
+  const playerStatus    = $('playerStatus');
+  const wordInput       = $('wordInput');
+  const submitWordBtn   = $('submitWordBtn');
+  const lastRoundTitle  = $('lastRoundTitle');
+  const lastP1Word      = $('lastP1Word');
+  const lastP2Word      = $('lastP2Word');
+  const agreeBtn        = $('agreeBtn');
+  const restartRoundBtn = $('restartRoundBtn');
+  const historyList     = $('historyList');
+  const successMessage  = $('successMessage');
+  const againBtn        = $('againBtn');
+  const toast           = $('toast');
 
-        // 显示回合
-        roundCounter.textContent = `第 ${gameState.round} 轮`;
+  /* =========================================================
+   *  三、工具函数
+   * ========================================================= */
 
-        // 更新上一轮显示
-        lastP1Word.textContent = gameState.lastP1 || '——';
-        lastP2Word.textContent = gameState.lastP2 || '——';
+  // 浮动提示
+  let toastTimer = null;
+  function showToast(msg, duration = 2200) {
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), duration);
+  }
 
-        // 判断当前玩家是否已提交
-        const iAmP1 = myRole === 'p1';
-        const mySubmitted = iAmP1 ? gameState.p1Submitted : gameState.p2Submitted;
-        const otherSubmitted = iAmP1 ? gameState.p2Submitted : gameState.p1Submitted;
+  // 设置连接状态条
+  function setConnStatus(text, type) {
+    connStatus.textContent = text;
+    connStatus.classList.remove('ok', 'err');
+    if (type === 'ok') connStatus.classList.add('ok');
+    if (type === 'err') connStatus.classList.add('err');
+  }
 
-        // 更新状态提示
-        if (!mySubmitted && !otherSubmitted) {
-          playerStatus.textContent = '轮到你了，输入一个词吧';
-        } else if (mySubmitted && !otherSubmitted) {
-          playerStatus.textContent = '✅ 你已提交，等待对方...';
-        } else if (!mySubmitted && otherSubmitted) {
-          playerStatus.textContent = '⏳ 对方已提交，等你啦';
-        } else {
-          playerStatus.textContent = '✨ 双方已提交，可以揭晓/下一轮';
-        }
+  // 生成随机房间号（6 位大写字母数字）
+  function genRoomCode() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let s = '';
+    for (let i = 0; i < 6; i++) s += chars[Math.floor(Math.random() * chars.length)];
+    return s;
+  }
 
-        // 如果双方都已提交，显示双方词 (但根据规则，提交后能看到对方的词? 实际上规则: "都提交后才能看见对方的词"，所以一旦双方提交，我们就把对方的词显示出来)
-        // 另外，如果当前玩家未提交，但对方已提交，我们不显示对方的词 (隐私)
-        // 但游戏体验: 一旦双方提交，就把双方词显示在上一轮区域? 但上一轮是上一轮的结果，当前轮还没结束
-        // 我们可以让"上一轮"区域只显示历史，而当前轮的双词在双方提交后通过某种方式展示? 但规则说"都提交后才能看见对方的词"，我们可以在历史或单独区域展示？
-        // 这里为了简洁，我们在双方都提交后，把当前词立刻显示在输入框下方? 但设计上"上一轮"是显示上一轮结果。可以在提交按钮下方临时展示本轮的词。
-        // 但为了简化，我们使用lastRoundBox显示上一轮；当双方都提交时，我们直接将本轮结果展示出来并自动判断是否相同？或者交给"认为词一样"按钮？
-        // 规则: 都提交后才能看见对方的词。若一样，则成功；若不一样，则双方再次输入一个词。所以应该在双方提交后立即展示双方词并提示是否相同，然后可以点击"认为词一样"或"重新开始"？
-        // 但为了确保用户能看清，我们设计: 双方提交后，把双方本轮词展示在"上一轮"区域? 但那是上一轮。
-        // 调整: 如果双方都已提交，且未结束，我们临时在lastRoundBox显示本轮词？这样会覆盖上一轮。但为了清晰，我们再开一个区域? 简单起见，我们直接在"上一轮"区域显示当前轮的结果，因为上一轮会在进入下一轮时更新。
-        // 这样更好: 每次提交完成后，如果双方都提交，显示双方词，并等待"认为词一样"或"重新开始"。
-        // 所以我们动态修改: 如果双方都提交了，lastP1Word显示当前p1Word，lastP2Word显示当前p2Word，并加个提示。
-        if (gameState.p1Submitted && gameState.p2Submitted) {
-          // 双方都已提交，显示双方本轮词
-          lastP1Word.textContent = gameState.p1Word || '——';
-          lastP2Word.textContent = gameState.p2Word || '——';
-          // 检测是否相同
-          if (gameState.p1Word.trim() !== '' && gameState.p2Word.trim() !== '' && gameState.p1Word.trim() === gameState.p2Word.trim()) {
-            // 自动结束? 但规则说"若输入的词一样，则成功"，我们可以在双方提交后自动判断相同，并显示成功。
-            // 但需要记录历史，并且游戏结束。
-            if (!gameState.gameOver) {
-              // 添加历史
-              const historyItem = {
-                round: gameState.round,
-                p1: gameState.p1Word,
-                p2: gameState.p2Word
-              };
-              gameState.history.push(historyItem);
-              gameState.gameOver = true;
-              // 更新上一轮
-              gameState.lastP1 = gameState.p1Word;
-              gameState.lastP2 = gameState.p2Word;
-              saveState();
-              updateUI();
-              showToast('🎉 你们选择了相同的词！游戏结束');
-              return;
-            }
-          }
-        } else {
-          // 如果还没双方提交，保持显示上一轮
-          lastP1Word.textContent = gameState.lastP1 || '——';
-          lastP2Word.textContent = gameState.lastP2 || '——';
-        }
+  // 创建初始游戏状态
+  function initialState() {
+    return {
+      round: 1,
+      p1: { word: '', submitted: false },
+      p2: { word: '', submitted: false },
+      lastP1: '',
+      lastP2: '',
+      history: [],
+      gameOver: false
+    };
+  }
 
-        // 根据已提交状态禁用输入框
-        if (mySubmitted) {
-          wordInput.disabled = true;
-          submitWordBtn.disabled = true;
-        } else {
-          wordInput.disabled = false;
-          submitWordBtn.disabled = false;
-        }
+  /* =========================================================
+   *  四、房主权威逻辑（所有状态变更都在房主端执行）
+   * ========================================================= */
 
-        // 渲染历史
-        renderHistory();
-      }
-
-      // 渲染历史记录
-      function renderHistory() {
-        historyList.innerHTML = '';
-        if (gameState.history.length === 0) {
-          historyList.innerHTML = '<div style="text-align:center; color:#dbb7c1; padding:12px;">还没有记录，开始第一轮吧 ✨</div>';
-        } else {
-          gameState.history.forEach(item => {
-            const div = document.createElement('div');
-            div.className = 'history-item';
-            div.innerHTML = `
-              <span><span class="round-num">第${item.round}轮</span></span>
-              <span class="words">
-                <span>${item.p1 || '——'}</span>
-                <span>💞</span>
-                <span>${item.p2 || '——'}</span>
-              </span>
-            `;
-            historyList.appendChild(div);
-          });
-        }
-      }
-
-      // 重置游戏 (再来一把)
-      function resetGame() {
-        // 保留房间号，重置状态
-        const roomId = gameState.roomId;
-        gameState = {
-          roomId: roomId,
-          round: 1,
-          p1Submitted: false,
-          p2Submitted: false,
-          p1Word: '',
-          p2Word: '',
-          lastP1: '',
-          lastP2: '',
-          history: [],
-          gameOver: false,
-          forceAgree: false,
-          createdAt: Date.now()
-        };
-        // 清空输入框
-        wordInput.value = '';
-        saveState();
-        updateUI();
-        showToast('新的一局开始啦 🌸');
-      }
-
-      // ---------- 事件绑定 ----------
-      // 创建房间
-      createRoomBtn.addEventListener('click', () => {
-        const newRoomId = generateRoomId();
-        gameState = {
-          roomId: newRoomId,
-          round: 1,
-          p1Submitted: false,
-          p2Submitted: false,
-          p1Word: '',
-          p2Word: '',
-          lastP1: '',
-          lastP2: '',
-          history: [],
-          gameOver: false,
-          forceAgree: false,
-          createdAt: Date.now()
-        };
-        myRole = 'p1';
-        saveState();
-        roomArea.classList.remove('hidden');
-        createRoomBtn.classList.add('hidden');
-        gamePlayArea.classList.remove('hidden');
-        roomIdDisplay.textContent = `房间: ${gameState.roomId}`;
-        // 更新 URL 便于分享 (只加参数不刷新)
-        const url = new URL(window.location);
-        url.searchParams.set('room', gameState.roomId);
-        window.history.replaceState({}, '', url);
-        updateUI();
-        showToast('房间创建成功！点击邀请好友');
+  // 检查本轮是否自动判定成功（双方都提交且词相同）
+  function checkRoundComplete() {
+    if (!state.p1.submitted || !state.p2.submitted) return;
+    if (state.p1.word !== '' && state.p1.word === state.p2.word) {
+      state.history.push({
+        round: state.round,
+        p1: state.p1.word,
+        p2: state.p2.word
       });
+      state.lastP1 = state.p1.word;
+      state.lastP2 = state.p2.word;
+      state.gameOver = true;
+    }
+  }
 
-      // 邀请好友 (复制链接)
-      inviteBtn.addEventListener('click', () => {
-        if (!gameState.roomId) {
-          showToast('请先创建房间');
-          return;
-        }
-        const url = new URL(window.location);
-        url.searchParams.set('room', gameState.roomId);
-        // 如果当前是p1，不需要改变角色；但链接应确保对方以p2身份加入? 目前我们的detectRole根据是否有room参数判断p2，但如果是房主自己打开带room的链接会变成p2。
-        // 为了安全，我们生成邀请链接时去掉role参数，对方打开后若本地没有房间状态则作为p2。
-        const inviteLink = url.toString();
-        navigator.clipboard.writeText(inviteLink).then(() => {
-          showToast('🔗 邀请链接已复制，发给好友吧！');
-        }).catch(() => {
-          // 降级方案
-          prompt('复制此链接发送给好友:', inviteLink);
-        });
-      });
+  // 把本轮结果写入历史（防止重复写入）
+  function pushHistoryIfNeeded() {
+    if (!state.p1.submitted || !state.p2.submitted) return;
+    if (state.history.some(h => h.round === state.round)) return;
+    state.history.push({
+      round: state.round,
+      p1: state.p1.word,
+      p2: state.p2.word
+    });
+  }
 
-      // 提交词语
-      submitWordBtn.addEventListener('click', () => {
-        const word = wordInput.value.trim();
-        if (!word) {
-          showToast('请输入一个词哦～');
-          return;
-        }
-        // 检查是否已提交
-        const iAmP1 = myRole === 'p1';
-        if (iAmP1 && gameState.p1Submitted) {
-          showToast('你已经提交过啦');
-          return;
-        }
-        if (!iAmP1 && gameState.p2Submitted) {
-          showToast('你已经提交过啦');
-          return;
-        }
+  // 处理一个动作（role 表示动作发起方：p1 / p2）
+  function handleAction(role, action, data) {
+    if (!isHost) return;
+    if (!state) state = initialState();
 
-        // 更新状态
-        if (iAmP1) {
-          gameState.p1Word = word;
-          gameState.p1Submitted = true;
+    const isP1 = role === 'p1';
+    const mySlot = isP1 ? state.p1 : state.p2;
+
+    if (action === 'submit') {
+      if (state.gameOver) return;
+      if (mySlot.submitted) return;
+      const word = ((data && data.word) || '').trim().slice(0, 20);
+      if (!word) return;
+      mySlot.word = word;
+      mySlot.submitted = true;
+      checkRoundComplete();
+
+    } else if (action === 'agree') {
+      // 认为词一样 → 直接判定成功并结束
+      if (state.gameOver) return;
+      if (!state.p1.submitted || !state.p2.submitted) return;
+      pushHistoryIfNeeded();
+      state.lastP1 = state.p1.word;
+      state.lastP2 = state.p2.word;
+      state.gameOver = true;
+
+    } else if (action === 'restart') {
+      // 进入下一轮（需要双方都已提交）
+      if (state.gameOver) return;
+      if (!state.p1.submitted || !state.p2.submitted) return;
+      pushHistoryIfNeeded();
+      state.lastP1 = state.p1.word;
+      state.lastP2 = state.p2.word;
+      state.round += 1;
+      state.p1 = { word: '', submitted: false };
+      state.p2 = { word: '', submitted: false };
+
+    } else if (action === 'again') {
+      // 完全重置
+      state = initialState();
+    }
+
+    broadcastState();
+    render();
+  }
+
+  // 房主广播状态给客户端
+  function broadcastState() {
+    if (isHost && conn && conn.open && state) {
+      try {
+        conn.send({ type: 'state', state: state });
+      } catch (e) { /* 忽略发送异常 */ }
+    }
+  }
+
+  // 发起动作（房主本地执行，客户端发送给房主）
+  function sendAction(action, data) {
+    if (isHost) {
+      handleAction(myRole, action, data);
+    } else {
+      if (conn && conn.open) {
+        try {
+          conn.send({ type: 'action', action: action, data: data || {} });
+        } catch (e) {
+          showToast('发送失败，请检查连接');
+        }
+      } else {
+        showToast('连接尚未就绪，请稍候');
+      }
+    }
+  }
+
+  /* =========================================================
+   *  五、PeerJS 连接管理
+   * ========================================================= */
+
+  // 创建房间（房主）
+  function createRoom() {
+    isHost = true;
+    myRole = 'p1';
+    const code = genRoomCode();
+    roomId = code;
+
+    setConnStatus('正在创建房间...');
+    createRoomBtn.disabled = true;
+
+    // 用固定前缀 + 房间号作为 PeerJS ID，保证别人能连上
+    peer = new Peer('tongci-' + code, { debug: 0 });
+
+    peer.on('open', () => {
+      state = initialState();
+      showRoomUI();
+      render();
+      setConnStatus('房间已创建，等待好友加入...', 'ok');
+      showToast('房间创建成功！点击「邀请好友」');
+    });
+
+    peer.on('connection', (connection) => {
+      // 只接受一个连接
+      if (conn && conn.open) {
+        try { connection.close(); } catch (e) {}
+        return;
+      }
+      conn = connection;
+      setupConnection();
+    });
+
+    peer.on('error', handlePeerError);
+  }
+
+  // 加入房间（客户端）
+  function joinRoom(code) {
+    isHost = false;
+    myRole = 'p2';
+    roomId = code.toUpperCase();
+    retryCount = 0;
+
+    setConnStatus('正在连接房间 ' + roomId + ' ...');
+    createRoomBtn.disabled = true;
+
+    peer = new Peer(null, { debug: 0 });
+
+    peer.on('open', () => {
+      showRoomUI();
+      connectToHost();
+    });
+
+    peer.on('error', handlePeerError);
+  }
+
+  // 客户端连接房主（带自动重试）
+  function connectToHost() {
+    if (!peer || peer.destroyed) return;
+    if (conn && conn.open) return;
+
+    try {
+      conn = peer.connect('tongci-' + roomId, { reliable: true });
+      setupConnection();
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  // 建立连接后的通用事件绑定
+  function setupConnection() {
+    if (!conn) return;
+
+    conn.on('open', () => {
+      setConnStatus('已连接 ✅', 'ok');
+      if (isHost) {
+        // 房主把当前状态同步给新加入的玩家
+        broadcastState();
+      }
+      render();
+    });
+
+    conn.on('data', (data) => {
+      if (!data || typeof data !== 'object') return;
+
+      if (isHost) {
+        // 房主接收客户端动作
+        if (data.type === 'action') {
+          handleAction('p2', data.action, data.data);
+        }
+      } else {
+        // 客户端接收房主状态
+        if (data.type === 'state' && data.state) {
+          state = data.state;
+          render();
+        }
+      }
+    });
+
+    conn.on('close', () => {
+      setConnStatus('连接已断开', 'err');
+      showToast('对方已离开，连接断开');
+      render();
+    });
+
+    conn.on('error', (err) => {
+      console.error('[Conn Error]', err);
+    });
+  }
+
+  // PeerJS 错误统一处理
+  function handlePeerError(err) {
+    console.error('[PeerJS Error]', err);
+
+    if (err.type === 'peer-unavailable') {
+      // 客户端：房主暂时不在线，自动重试
+      if (!isHost) {
+        if (retryCount < 10) {
+          retryCount++;
+          setConnStatus('等待房主上线... (' + retryCount + '/10)');
+          setTimeout(() => {
+            if (!conn || !conn.open) connectToHost();
+          }, 2500);
         } else {
-          gameState.p2Word = word;
-          gameState.p2Submitted = true;
+          setConnStatus('无法连接，请确认房间号或让房主重新创建', 'err');
+          showToast('找不到该房间，请确认链接是否正确');
         }
-        wordInput.value = ''; // 清空
-        saveState();
-        updateUI();
-        showToast('提交成功，等待对方...');
+      }
+    } else if (err.type === 'unavailable-id') {
+      setConnStatus('房间号被占用，请重新创建', 'err');
+      showToast('房间号冲突，请重新创建房间');
+      createRoomBtn.disabled = false;
+    } else if (err.type === 'network' || err.type === 'server-error') {
+      setConnStatus('网络错误，请检查网络后刷新', 'err');
+    } else {
+      setConnStatus('连接异常: ' + err.type, 'err');
+    }
+  }
 
-        // 检查是否双方都已提交 (自动结束条件)
-        if (gameState.p1Submitted && gameState.p2Submitted) {
-          // 自动比较是否相同
-          if (gameState.p1Word.trim() === gameState.p2Word.trim()) {
-            // 相同，添加历史并结束
-            const historyItem = {
-              round: gameState.round,
-              p1: gameState.p1Word,
-              p2: gameState.p2Word
-            };
-            gameState.history.push(historyItem);
-            gameState.lastP1 = gameState.p1Word;
-            gameState.lastP2 = gameState.p2Word;
-            gameState.gameOver = true;
-            saveState();
-            updateUI();
-            showToast('🎉 你们选择了相同的词！');
-          } else {
-            // 不相同，不自动推进，等待用户点击"认为词一样"或"重新开始"来进入下一轮
-            // 但我们可以更新显示
-            updateUI();
-          }
-        }
-      });
+  /* =========================================================
+   *  六、界面切换与渲染
+   * ========================================================= */
 
-      // 认为词一样 (强制结束并记录历史)
-      agreeBtn.addEventListener('click', () => {
-        // 检查双方是否都已提交
-        if (!gameState.p1Submitted || !gameState.p2Submitted) {
-          showToast('还没都提交呢，再等等～');
-          return;
-        }
-        // 如果已经结束
-        if (gameState.gameOver) return;
+  // 显示房间 + 游戏区域
+  function showRoomUI() {
+    createRoomBtn.classList.add('hidden');
+    roomArea.classList.remove('hidden');
+    gamePlayArea.classList.remove('hidden');
+    roomIdDisplay.textContent = '房间: ' + roomId;
+    if (isHost) {
+      roomIdDisplay.textContent = '🏠 房间: ' + roomId;
+    } else {
+      roomIdDisplay.textContent = '👤 房间: ' + roomId;
+    }
+  }
 
-        // 记录本轮
-        const historyItem = {
-          round: gameState.round,
-          p1: gameState.p1Word,
-          p2: gameState.p2Word
-        };
-        // 避免重复添加
-        if (!gameState.history.some(h => h.round === gameState.round)) {
-          gameState.history.push(historyItem);
-        }
-        gameState.lastP1 = gameState.p1Word;
-        gameState.lastP2 = gameState.p2Word;
-        gameState.gameOver = true;
-        saveState();
-        updateUI();
-        showToast('🎉 游戏结束，你们成功相遇！');
-      });
+  // 渲染主界面
+  function render() {
+    if (!state) return;
 
-      // 重新开始 (进入下一轮)
-      restartRoundBtn.addEventListener('click', () => {
-        // 如果游戏已结束则不可用
-        if (gameState.gameOver) return;
-        // 检查本轮是否已记录? 如果双方提交了，但用户想重来，那应该记录本轮并且进入下一轮
-        if (gameState.p1Submitted && gameState.p2Submitted) {
-          // 记录历史
-          const historyItem = {
-            round: gameState.round,
-            p1: gameState.p1Word,
-            p2: gameState.p2Word
-         
+    const me = (myRole === 'p1') ? state.p1 : state.p2;
+    const other = (myRole === 'p1') ? state.p2 : state.p1;
+    const bothSubmitted = state.p1.submitted && state.p2.submitted;
+
+    // 回合数
+    roundCounter.textContent = '第 ' + state.round + ' 轮';
+
+    /* ---------- 游戏已结束 ---------- */
+    if (state.gameOver) {
+      wordInput.disabled = true;
+      submitWordBtn.disabled = true;
+      agreeBtn.classList.add('hidden');
+      restartRoundBtn.classList.add('hidden');
+      againBtn.classList.remove('hidden');
+
+      const rounds = state.history.length;
+      successMessage.classList.remove('hidden');
+      successMessage.innerHTML =
+        '🎉 成功相遇！ 🎉' +
+        '<small>经过 ' + rounds + ' 轮，你们选择了相同的词</small>';
+
+      playerStatus.textContent = '游戏结束 🎊';
+      lastRoundTitle.textContent = '最终选择';
+      lastP1Word.textContent = state.lastP1 || '——';
+      lastP2Word.textContent = state.lastP2 || '——';
+
+      renderHistory();
+      return;
+    }
+
+    /* ---------- 游戏进行中 ---------- */
+    successMessage.classList.add('hidden');
+    againBtn.classList.add('hidden');
+    agreeBtn.classList.remove('hidden');
+    restartRoundBtn.classList.remove('hidden');
+
+    // 输入框可用性
+    if (me.submitted) {
+      wordInput.disabled = true;
+      submitWordBtn.disabled = true;
+    } else {
+      wordInput.disabled = false;
+      submitWordBtn.disabled = false;
+    }
+
+    // 状态文字
+    if (bothSubmitted) {
+      if (state.p1.word === state.p2.word) {
+        playerStatus.textContent = '词语相同！🎉';
+      } else {
+        playerStatus.textContent = '词语不同，再试一次吧～';
+      }
+      agreeBtn.disabled = false;
+      restartRoundBtn.disabled = false;
+    } else {
+      agreeBtn.disabled = true;
+      restartRoundBtn.disabled = true;
+      if (!me.submitted && !other.submitted) {
+        playerStatus.textContent = '轮到你了，输入一个词吧';
+      } else if (me.submitted) {
+        playerStatus.textContent = '✅ 你已提交，等待对方...';
+      } else {
+        playerStatus.textContent = '⏳ 对方已提交，等你啦';
+      }
+    }
+
+    // 上一轮 / 本轮 词展示
+    if (bothSubmitted) {
+      lastRoundTitle.textContent = '本轮输入';
+      lastP1Word.textContent = state.p1.word || '——';
+      lastP2Word.textContent = state.p2.word || '——';
+    } else {
+      lastRoundTitle.textContent = '上一轮输入';
+      lastP1Word.textContent = state.lastP1 || '——';
+      lastP2Word.textContent = state.lastP2 || '——';
+    }
+
+    renderHistory();
+  }
+
+  // 渲染历史记录
+  function renderHistory() {
+    if (!state || !state.history || state.history.length === 0) {
+      historyList.innerHTML = '<div class="empty-history">还没有记录，开始第一轮吧 ✨</div>';
+      return;
+    }
+
+    let html = '';
+    state.history.forEach(function (item) {
+      html +=
+        '<div class="history-item">' +
+          '<span class="round-num">第' + item.round + '轮</span>' +
+          '<span class="words">' +
+            '<span>' + escapeHtml(item.p1) + '</span>' +
+            '<span>💞</span>' +
+            '<span>' + escapeHtml(item.p2) + '</span>' +
+          '</span>' +
+        '</div>';
+    });
+    historyList.innerHTML = html;
+  }
+
+  // 简单 HTML 转义，防止用户输入破坏结构
+  function escapeHtml(str) {
+    if (!str) return '——';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  /* =========================================================
+   *  七、事件绑定
+   * ========================================================= */
+
+  // 创建房间
+  createRoomBtn.addEventListener('click', function () {
+    if (peer && !peer.destroyed) {
+      try { peer.destroy(); } catch (e) {}
+      peer = null;
+    }
+    conn = null;
+    state = null;
+    createRoom();
+  });
+
+  // 邀请好友（复制链接）
+  inviteBtn.addEventListener('click', function () {
+    if (!roomId) {
+      showToast('房间尚未创建完成');
+      return;
+    }
+
+    const url = new URL(window.location.href);
+    url.searchParams.set('room', roomId);
+    url.hash = '';
+    const link = url.toString();
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(link)
+        .then(function () { showToast('🔗 邀请链接已复制！发给好友吧'); })
+        .catch(function () { fallbackCopy(link); });
+    } else {
+      fallbackCopy(link);
+    }
+  });
+
+  // 复制降级方案
+  function fallbackCopy(text) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+      document.execCommand('copy');
+      showToast('🔗 邀请链接已复制！');
+    } catch (e) {
+      window.prompt('请手动复制下面的链接：', text);
+    }
+    document.body.removeChild(ta);
+  }
+
+  // 提交词语
+  submitWordBtn.addEventListener('click', function () {
+    if (!state) { showToast('游戏尚未开始'); return; }
+
+    const word = wordInput.value.trim();
+    if (!word) {
+      showToast('请输入一个词哦～');
+      wordInput.focus();
+      return;
+    }
+
+    const me = (myRole === 'p1') ? state.p1 : state.p2;
+    if (me.submitted) {
+      showToast('你已经提交过啦');
+      return;
+    }
+
+    wordInput.value = '';
+    sendAction('submit', { word: word });
+  });
+
+  // 回车提交
+  wordInput.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      submitWordBtn.click();
+    }
+  });
+
+  // 认为词一样
+  agreeBtn.addEventListener('click', function () {
+    sendAction('agree');
+  });
+
+  // 重新开始（进入下一轮）
+  restartRoundBtn.addEventListener('click', function () {
+    sendAction('restart');
+  });
+
+  // 再来一把（完全重置）
+  againBtn.addEventListener('click', function () {
+    sendAction('again');
+    wordInput.value = '';
+    showToast('新的一局开始啦 🌸');
+  });
+
+  /* =========================================================
+   *  八、页面初始化
+   * ========================================================= */
+  window.addEventListener('DOMContentLoaded', function () {
+    const params = new URLSearchParams(window.location.search);
+    const roomFromUrl = params.get('room');
+
+    if (roomFromUrl && roomFromUrl.trim()) {
+      // URL 带房间号 → 作为客户端加入
+      joinRoom(roomFromUrl.trim().toUpperCase());
+    } else {
+      // 没有房间号 → 显示创建房间按钮
+      setConnStatus('点击下方按钮创建房间');
+      render();
+    }
+  });
+
+  // 页面关闭时清理连接
+  window.addEventListener('beforeunload', function () {
+    try {
+      if (conn) conn.close();
+      if (peer) peer.destroy();
+    } catch (e) {}
+  });
+
+})();
+</script>
+</body>
+</html>
