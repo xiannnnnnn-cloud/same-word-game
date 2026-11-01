@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>接同词相遇</title>
-  <!-- 引入 MQTT 库，用来联机同步 -->
+  <!-- MQTT 公共中继，用来联机同步 -->
   <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
   <style>
     * {
@@ -116,6 +116,25 @@
       font-weight: bold;
     }
 
+    .prev-round-box {
+      background-color: #ffeef6;
+      border: 2px solid #ffdce8;
+      border-radius: 20px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .success-count-box {
+      background-color: #e8f9ef;
+      border: 2px solid #bcefd4;
+      border-radius: 20px;
+      padding: 16px;
+      margin-bottom: 16px;
+      text-align: center;
+      color: #2b9b49;
+      font-weight: bold;
+    }
+
     .log-title {
       margin-bottom: 10px;
       font-weight: 600;
@@ -156,16 +175,70 @@
       color: #3b72b8;
       margin-top: 20px;
     }
+
+    /* 弹窗遮罩 */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background-color: rgba(0, 0, 0, 0.35);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 999;
+    }
+
+    .modal {
+      width: min(92%, 560px);
+      background: white;
+      border-radius: 28px;
+      padding: 32px;
+      box-shadow: 0 12px 30px rgba(255, 123, 156, 0.18);
+    }
+
+    .modal h2 {
+      color: #ff7b9c;
+      margin-bottom: 12px;
+    }
+
+    .modal small {
+      color: #777;
+    }
   </style>
 </head>
 <body>
-  <!-- 开始页：创建 / 输入房间 -->
+  <!-- 创建房间弹窗 -->
+  <div id="modalOverlay" class="modal-overlay">
+    <div class="modal">
+      <h2>房间已创建 ✨</h2>
+      <small>把链接或者房间号发给好友，让对方加入</small>
+
+      <div class="row">
+        <label>房间号</label>
+        <input id="modalRoomCode" readonly>
+      </div>
+
+      <div class="row">
+        <label>房间链接</label>
+        <div class="input-wrap">
+          <input id="modalLink" readonly>
+          <button id="modalCopyBtn" class="btn secondary">复制</button>
+        </div>
+        <div id="modalTip" class="msg-tip"></div>
+      </div>
+
+      <div class="row">
+        <button id="modalCloseBtn" class="btn">确定，进入房间</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 起始页 -->
   <section id="startPage" class="card">
     <h1>接同词相遇 ✨</h1>
-    <p class="tip">和好友输入一样的词，相遇就算成功！</p >
+    <p class="tip">两个人都进房间，一起提交词语，看看能不能对上！</p >
 
     <div class="row">
-      <button id="createRoomBtn" class="btn">创建新房间</button>
+      <button id="createRoomBtn" class="btn">创建房间</button>
     </div>
 
     <div class="row">
@@ -179,21 +252,24 @@
 
   <!-- 房间页面 -->
   <section id="roomPage" class="card hidden">
-    <div class="row">
-      <label>房间链接（发给好友）</label>
-      <div class="input-wrap">
-        <input id="shareLink" readonly>
-        <button id="copyLinkBtn" class="btn secondary">复制链接</button>
-      </div>
-      <div id="copyTip" class="msg-tip"></div>
-    </div>
-
     <div class="countdown-box">
       <div id="timerText">60</div>
-      <p id="timerLabel">剩余时间（本轮）</p >
+      <p id="timerLabel">等待另一位玩家进入房间</p >
     </div>
 
-    <div class="row">
+    <!-- “累计成功相遇”提示 -->
+    <div id="successCountBox" class="success-count-box hidden">
+      🎉 累计成功相遇：<span id="successCountNum">0</span> 次
+    </div>
+
+    <!-- “上一轮记录”，没对上时显示 -->
+    <div id="prevRoundBox" class="prev-round-box hidden">
+      <label>上一轮（没对上）</label>
+      <div id="prevRoundText"></div>
+    </div>
+
+    <!-- “输入区域”，两人都进来才显示 -->
+    <div id="gameInputWrap" class="row hidden">
       <label>输入你的词语</label>
       <div class="input-wrap">
         <input id="wordInput" placeholder="在这里输入词语">
@@ -202,7 +278,7 @@
     </div>
 
     <div class="row">
-      <div class="log-title">所有提交记录</div>
+      <div class="log-title">每一轮记录（全部保留）</div>
       <div id="logBox" class="log-box"></div>
     </div>
 
@@ -216,94 +292,20 @@
   </section>
 
   <script>
-    // 获取页面元素
+    // 获取页面全部元素
+    const modalOverlay = document.getElementById('modalOverlay');
+    const modalRoomCode = document.getElementById('modalRoomCode');
+    const modalLink = document.getElementById('modalLink');
+    const modalCopyBtn = document.getElementById('modalCopyBtn');
+    const modalTip = document.getElementById('modalTip');
+    const modalCloseBtn = document.getElementById('modalCloseBtn');
+
     const startPage = document.getElementById('startPage');
     const roomPage = document.getElementById('roomPage');
     const createRoomBtn = document.getElementById('createRoomBtn');
     const joinRoomInput = document.getElementById('joinRoomInput');
     const joinRoomBtn = document.getElementById('joinRoomBtn');
-    const shareLink = document.getElementById('shareLink');
-    const copyLinkBtn = document.getElementById('copyLinkBtn');
-    const copyTip = document.getElementById('copyTip');
     const timerText = document.getElementById('timerText');
     const timerLabel = document.getElementById('timerLabel');
-    const wordInput = document.getElementById('wordInput');
-    const submitBtn = document.getElementById('submitBtn');
-    const logBox = document.getElementById('logBox');
-    const restartBtn = document.getElementById('restartBtn');
 
-    // MQTT 公共中继
-    const brokerUrl = 'wss://broker.hivemq.com:8884/mqtt';
-    let mqttClient = null;
-    let roomCode = '';
-    let topic = '';
-    let countdownTimer = null;
-    let remainSeconds = 60;
-    let myWord = '';
-    let otherWord = '';
-    let gameEnded = false;
-
-    /**
-     * 生成房间号：一个大写字母 + 三位数字
-     */
-    function makeRoomCode() {
-      const letter = String.fromCharCode(65 + Math.floor(Math.random() * 26));
-      const num = String(Math.floor(Math.random() * 1000)).padStart(3, '0');
-      return letter + num;
-    }
-
-    /**
-     * 添加一条日志记录
-     * @param text - 显示文字
-     * @param isSuccess - 是否是成功相遇
-     */
-    function addLog(text, isSuccess = false) {
-      const item = document.createElement('div');
-      item.className = 'log-item';
-      if (isSuccess) item.classList.add('success-item');
-      item.textContent = text;
-      logBox.appendChild(item);
-      logBox.scrollTop = logBox.scrollHeight;
-    }
-
-    /**
-     * 切换页面到房间
-     */
-    function showRoom() {
-      startPage.classList.add('hidden');
-      roomPage.classList.remove('hidden');
-    }
-
-    /**
-     * 返回首页，关闭连接
-     */
-    function backToStart() {
-      startPage.classList.remove('hidden');
-      roomPage.classList.add('hidden');
-      if (mqttClient) {
-        mqttClient.end();
-        mqttClient = null;
-      }
-      resetGame();
-    }
-
-    /**
-     * 重置本局游戏状态
-     */
-    function resetGame() {
-      clearInterval(countdownTimer);
-      remainSeconds = 60;
-      myWord = '';
-      otherWord = '';
-      gameEnded = false;
-      logBox.innerHTML = '';
-      wordInput.value = '';
-      submitBtn.disabled = false;
-      updateTimerUI();
-    }
-
-    /**
-     * 更新倒计时显示
-     */
-    function updateTimerUI() {
-      tim
+    const successCountBox = document.ge
