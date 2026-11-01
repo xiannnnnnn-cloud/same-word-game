@@ -195,6 +195,41 @@
     box-shadow: 0 2px 0 #79c6a0;
   }
 
+  /* ===== 历史记录按钮（主页） ===== */
+  .history-home-btn {
+    position: relative;
+    background: linear-gradient(180deg, #c9b6ff, #b19bf0);
+    color: #fff;
+    font-size: 1rem;
+    padding: 15px 20px;
+    width: 100%;
+    border-radius: 60px;
+    box-shadow: 0 6px 0 #9179c9, 0 10px 16px #e0d3ff;
+    margin-top: 12px;
+    letter-spacing: 2px;
+    text-shadow: 0 1px 2px #9179c9;
+  }
+  .history-home-btn:active {
+    transform: translateY(4px);
+    box-shadow: 0 2px 0 #9179c9;
+  }
+  .history-home-btn .history-count-badge {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    background: #ff6f91;
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 700;
+    min-width: 22px;
+    height: 22px;
+    line-height: 22px;
+    text-align: center;
+    border-radius: 11px;
+    padding: 0 6px;
+    box-shadow: 0 2px 6px rgba(255, 111, 145, 0.4);
+  }
+
   /* ===== 房间区域 ===== */
   .room-area {
     background: #fff6f9;
@@ -698,7 +733,7 @@
     border-top: 1px solid #fff0f5;
     flex-shrink: 0;
   }
-  .save-img-btn, .result-again-btn {
+  .save-img-btn, .result-again-btn, .clear-history-btn {
     flex: 1;
     padding: 14px 8px;
     border-radius: 40px;
@@ -723,6 +758,83 @@
   .result-again-btn:active {
     transform: translateY(4px);
     box-shadow: 0 1px 0 #d98a9b;
+  }
+  .clear-history-btn {
+    background: linear-gradient(180deg, #ffb6b6, #ff9999);
+    color: #fff;
+    box-shadow: 0 5px 0 #d67a7a;
+    text-shadow: 0 1px 2px #c76a6a;
+  }
+  .clear-history-btn:active {
+    transform: translateY(4px);
+    box-shadow: 0 1px 0 #d67a7a;
+  }
+
+  /* ===== 主页历史记录条目 ===== */
+  .home-history-item {
+    background: #fff5f8;
+    border: 1px solid #ffe2ea;
+    border-radius: 20px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .home-history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.78rem;
+    color: #b68b9c;
+    font-weight: 600;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .home-history-header .h-date {
+    color: #a78a97;
+  }
+  .home-history-header .h-info {
+    color: #ff8da1;
+    font-weight: 700;
+  }
+  .home-history-words {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .home-history-word-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    color: #694e58;
+    font-weight: 600;
+  }
+  .home-history-word-row .r-tag {
+    color: #ff8da1;
+    font-weight: 700;
+    font-size: 0.75rem;
+    min-width: 44px;
+    flex-shrink: 0;
+  }
+  .home-history-word-row .w {
+    background: #ffffff;
+    padding: 2px 10px;
+    border-radius: 30px;
+    color: #b3536b;
+    font-weight: 700;
+    max-width: 100px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .home-history-empty {
+    text-align: center;
+    color: #dcb9c4;
+    padding: 30px 10px;
+    font-size: 0.9rem;
+    line-height: 1.8;
   }
 
   /* ===== 图片预览（微信保存用） ===== */
@@ -790,7 +902,7 @@
   <!-- 连接状态 -->
   <div class="conn-status" id="connStatus">未连接</div>
 
-  <!-- 主页区：创建房间 + 输入房间号 -->
+  <!-- 主页区：创建房间 + 输入房间号 + 历史记录 -->
   <div id="homeArea">
     <button class="create-room-btn" id="createRoomBtn">🏠 创建房间</button>
     <div class="join-room-area">
@@ -798,6 +910,10 @@
              placeholder="输入房间号加入" maxlength="6" autocomplete="off">
       <button class="join-room-btn" id="joinRoomBtn">加入</button>
     </div>
+    <button class="history-home-btn" id="historyHomeBtn">
+      📜 历史记录
+      <span class="history-count-badge hidden" id="historyCountBadge">0</span>
+    </button>
   </div>
 
   <!-- 房间信息区（创建/加入后显示） -->
@@ -811,7 +927,6 @@
 
   <!-- 游戏主区域 -->
   <div id="gamePlayArea" class="hidden">
-    <!-- 输入区 -->
     <div class="word-section">
       <div class="turn-indicator">
         <span class="round-badge" id="roundCounter">第 1 轮</span>
@@ -824,7 +939,6 @@
         <button class="submit-btn" id="submitWordBtn">提交 ✨</button>
       </div>
 
-      <!-- 上一轮 / 本轮结果 -->
       <div class="last-round-box">
         <div class="last-round-title">
           <span>🕊️</span> <span id="lastRoundTitle">上一轮输入</span>
@@ -837,13 +951,11 @@
       </div>
     </div>
 
-    <!-- 操作按钮 -->
     <div class="action-buttons">
       <button class="agree-btn" id="agreeBtn" disabled>✅ 认为词一样</button>
       <button class="restart-btn" id="restartRoundBtn">🔄 全部重来</button>
     </div>
 
-    <!-- 历史记录 / 结束界面 -->
     <div class="history-panel">
       <div class="history-title"><span>📜</span> 相遇轨迹 <span>📜</span></div>
       <div class="history-list" id="historyList">
@@ -857,7 +969,7 @@
   <!-- 浮动提示 -->
   <div class="toast" id="toast"></div>
 
-  <!-- 结束弹窗 -->
+  <!-- 游戏结束弹窗 -->
   <div class="result-modal hidden" id="resultModal">
     <div class="result-modal-mask"></div>
     <div class="result-modal-card">
@@ -870,6 +982,23 @@
       <div class="result-modal-actions">
         <button class="save-img-btn" id="saveImgBtn">💾 保存图片</button>
         <button class="result-again-btn" id="resultAgainBtn">🌸 再来一局</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 主页历史记录弹窗 -->
+  <div class="result-modal hidden" id="historyHomeModal">
+    <div class="result-modal-mask"></div>
+    <div class="result-modal-card">
+      <div class="result-modal-header">
+        <div class="result-modal-emoji">📜</div>
+        <div class="result-modal-title">历史记录</div>
+        <div class="result-modal-sub">共 <span id="historyHomeCount">0</span> 局</div>
+      </div>
+      <div class="result-modal-list" id="historyHomeList"></div>
+      <div class="result-modal-actions">
+        <button class="clear-history-btn" id="clearHistoryBtn">🗑️ 清空</button>
+        <button class="result-again-btn" id="closeHistoryBtn">关闭</button>
       </div>
     </div>
   </div>
@@ -894,24 +1023,28 @@
   /* =========================================================
    *  一、全局状态
    * ========================================================= */
-  let peer = null;              // PeerJS 实例
-  let conn = null;              // 数据连接
-  let isHost = false;           // 是否是房间主机
-  let myRole = 'p1';            // 座位：'p1' 或 'p2'
-  let roomId = '';              // 当前房间号
-  let state = null;             // 游戏状态（主机权威，客户端镜像）
-  let retryCount = 0;           // 客户端连接重试次数
-  let nextRoundTimer = null;    // 词不同时自动下一轮的定时器
-  let reconnectTimer = null;    // 客户端断线重连定时器
-  let hostRestoreAttempt = 0;   // 主机恢复房间号的重试次数
-  let takeoverAttempted = false;// 是否已尝试接管
+  let peer = null;
+  let conn = null;
+  let isHost = false;
+  let myRole = 'p1';
+  let roomId = '';
+  let state = null;
+  let retryCount = 0;
+  let nextRoundTimer = null;
+  let reconnectTimer = null;
+  let hostRestoreAttempt = 0;
+  let takeoverAttempted = false;
 
-  let resultModalShown = false; // 结束弹窗是否已经弹出（防止重复弹）
+  let resultModalShown = false;
 
+  // localStorage 键名
   const LS_IS_HOST = 'tongci_is_host';
   const LS_MY_ROLE = 'tongci_my_role';
   const LS_ROOM    = 'tongci_room';
   const LS_STATE   = 'tongci_state_';
+  // 历史记录相关的 localStorage 键名
+  const LS_HISTORY_LIST = 'tongci_history_list';
+  const LS_SAVED_SIGS   = 'tongci_saved_sigs';
 
   const TAKEOVER_THRESHOLD = 8;
 
@@ -925,6 +1058,8 @@
   const createRoomBtn   = $('createRoomBtn');
   const joinRoomInput   = $('joinRoomInput');
   const joinRoomBtn     = $('joinRoomBtn');
+  const historyHomeBtn  = $('historyHomeBtn');
+  const historyCountBadge = $('historyCountBadge');
   const roomArea        = $('roomArea');
   const roomIdDisplay   = $('roomIdDisplay');
   const inviteBtn       = $('inviteBtn');
@@ -944,12 +1079,19 @@
   const againBtn        = $('againBtn');
   const toast           = $('toast');
 
-  // 结束弹窗相关
+  // 结束弹窗
   const resultModal     = $('resultModal');
   const resultRounds    = $('resultRounds');
   const resultModalList = $('resultModalList');
   const saveImgBtn      = $('saveImgBtn');
   const resultAgainBtn  = $('resultAgainBtn');
+
+  // 主页历史记录弹窗
+  const historyHomeModal = $('historyHomeModal');
+  const historyHomeCount = $('historyHomeCount');
+  const historyHomeList  = $('historyHomeList');
+  const clearHistoryBtn  = $('clearHistoryBtn');
+  const closeHistoryBtn  = $('closeHistoryBtn');
 
   // 图片预览
   const imgPreviewModal = $('imgPreviewModal');
@@ -999,6 +1141,13 @@
 
   function isMobile() {
     return /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(navigator.userAgent.toLowerCase());
+  }
+
+  function formatDate(ts) {
+    const d = new Date(ts);
+    const pad = (n) => (n < 10 ? '0' + n : '' + n);
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) +
+           ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
   }
 
   function copyText(text, successMsg) {
@@ -1068,7 +1217,150 @@
   }
 
   /* =========================================================
-   *  五、游戏状态与主机权威逻辑
+   *  五、本地历史记录管理
+   * ========================================================= */
+
+  // 读取历史记录列表
+  function readHistoryList() {
+    try {
+      const raw = localStorage.getItem(LS_HISTORY_LIST);
+      if (!raw) return [];
+      const arr = JSON.parse(raw);
+      return Array.isArray(arr) ? arr : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  // 写入历史记录列表
+  function writeHistoryList(list) {
+    try {
+      localStorage.setItem(LS_HISTORY_LIST, JSON.stringify(list));
+    } catch (e) {}
+  }
+
+  // 读取已保存签名
+  function readSavedSigs() {
+    try {
+      const raw = localStorage.getItem(LS_SAVED_SIGS);
+      if (!raw) return [];
+      const arr = JSON.parse(raw);
+      return Array.isArray(arr) ? arr : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  // 写入已保存签名
+  function writeSavedSigs(arr) {
+    try {
+      localStorage.setItem(LS_SAVED_SIGS, JSON.stringify(arr));
+    } catch (e) {}
+  }
+
+  // 保存当前对局到本地历史（幂等）
+  function saveCurrentGameToHistory() {
+    if (!state || !state.gameOver) return;
+    if (!roomId) return;
+    if (!state.history || state.history.length === 0) return;
+
+    // 用 startedAt 作为一局的唯一标识
+    const startedAt = state.startedAt || 0;
+    const sig = roomId + '_' + startedAt;
+
+    const savedSigs = readSavedSigs();
+    if (savedSigs.indexOf(sig) !== -1) return;
+
+    savedSigs.push(sig);
+    // 只保留最近 100 个签名
+    if (savedSigs.length > 100) savedSigs.splice(0, savedSigs.length - 100);
+    writeSavedSigs(savedSigs);
+
+    const list = readHistoryList();
+    list.push({
+      id: sig,
+      roomId: roomId,
+      date: Date.now(),
+      rounds: state.history.length,
+      history: state.history.map(function (h) {
+        return { round: h.round, p1: h.p1, p2: h.p2 };
+      })
+    });
+    // 只保留最近 50 局
+    if (list.length > 50) list.splice(0, list.length - 50);
+    writeHistoryList(list);
+
+    // 更新主页角标
+    refreshHistoryBadge();
+  }
+
+  // 刷新主页历史角标
+  function refreshHistoryBadge() {
+    const list = readHistoryList();
+    if (list.length > 0) {
+      historyCountBadge.textContent = String(list.length);
+      historyCountBadge.classList.remove('hidden');
+    } else {
+      historyCountBadge.classList.add('hidden');
+    }
+  }
+
+  // 渲染主页历史记录弹窗内容
+  function renderHistoryHomeModal() {
+    const list = readHistoryList();
+    historyHomeCount.textContent = list.length;
+
+    if (list.length === 0) {
+      historyHomeList.innerHTML =
+        '<div class="home-history-empty">' +
+          '还没有历史记录 ✨<br>' +
+          '<span style="font-size:0.8rem;color:#dcb9c4;">完成一局游戏后就会记录在这里</span>' +
+        '</div>';
+      return;
+    }
+
+    // 按时间倒序展示（最新在前）
+    const sorted = list.slice().sort(function (a, b) { return b.date - a.date; });
+
+    let html = '';
+    sorted.forEach(function (item) {
+      let rows = '';
+      (item.history || []).forEach(function (h) {
+        rows +=
+          '<div class="home-history-word-row">' +
+            '<span class="r-tag">第' + h.round + '轮</span>' +
+            '<span class="w">' + escapeHtml(h.p1) + '</span>' +
+            '<span style="font-size:0.8rem;color:#ff9db0;">💞</span>' +
+            '<span class="w">' + escapeHtml(h.p2) + '</span>' +
+          '</div>';
+      });
+
+      html +=
+        '<div class="home-history-item">' +
+          '<div class="home-history-header">' +
+            '<span class="h-date">' + formatDate(item.date) + '</span>' +
+            '<span class="h-info">房间 ' + escapeHtml(item.roomId) + ' · ' + item.rounds + ' 轮</span>' +
+          '</div>' +
+          '<div class="home-history-words">' + rows + '</div>' +
+        '</div>';
+    });
+
+    historyHomeList.innerHTML = html;
+  }
+
+  function showHistoryHomeModal() {
+    renderHistoryHomeModal();
+    historyHomeModal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function hideHistoryHomeModal() {
+    historyHomeModal.classList.add('hidden');
+    document.body.style.overflow = '';
+  }
+
+  /* =========================================================
+   *  六、游戏状态与主机权威逻辑
    * ========================================================= */
 
   function emptySeat() {
@@ -1077,6 +1369,7 @@
 
   function initialState() {
     return {
+      startedAt: Date.now(),  // 一局的唯一标识，用于历史记录去重
       round: 1,
       p1: emptySeat(),
       p2: emptySeat(),
@@ -1175,7 +1468,7 @@
       clearNextTimer();
       const p1Online = state.p1.online;
       const p2Online = state.p2.online;
-      state = initialState();
+      state = initialState();  // 新的 startedAt，视为新一局
       state.p1.online = p1Online;
       state.p2.online = p2Online;
     }
@@ -1216,7 +1509,7 @@
   }
 
   /* =========================================================
-   *  六、连接处理
+   *  七、连接处理
    * ========================================================= */
 
   function handleNewConnection(connection) {
@@ -1237,7 +1530,7 @@
 
       if (state.gameOver) {
         const myOnline = true;
-        state = initialState();
+        state = initialState();  // 新的一局，新 startedAt
         state[myRole].online = myOnline;
         state[other].online = true;
       }
@@ -1316,7 +1609,7 @@
   }
 
   /* =========================================================
-   *  七、PeerJS：创建 / 加入 / 接管
+   *  八、PeerJS：创建 / 加入 / 接管
    * ========================================================= */
 
   function createRoom() {
@@ -1449,7 +1742,7 @@
   }
 
   /* =========================================================
-   *  八、接管
+   *  九、接管
    * ========================================================= */
 
   function tryTakeover() {
@@ -1476,6 +1769,8 @@
 
       state.gameOver = false;
       state.pendingNextRound = false;
+      // 接管视为新的一局，更新 startedAt
+      state.startedAt = Date.now();
 
       saveSession();
       saveStateSnapshot();
@@ -1519,7 +1814,7 @@
   }
 
   /* =========================================================
-   *  九、会话恢复
+   *  十、会话恢复
    * ========================================================= */
 
   function resumeHost() {
@@ -1617,7 +1912,7 @@
   }
 
   /* =========================================================
-   *  十、界面切换与渲染
+   *  十一、界面切换与渲染
    * ========================================================= */
 
   function updateURLRoom(code) {
@@ -1643,6 +1938,7 @@
     homeBtn.classList.add('hidden');
     roomArea.classList.add('hidden');
     gamePlayArea.classList.add('hidden');
+    refreshHistoryBadge();
   }
 
   function render() {
@@ -1683,7 +1979,10 @@
 
       renderHistory();
 
-      // 显示弹窗（每局只弹一次）
+      // 保存到本地历史记录（幂等，会自动去重）
+      saveCurrentGameToHistory();
+
+      // 显示结束弹窗（每局只弹一次）
       if (!resultModalShown) {
         resultModalShown = true;
         setTimeout(function () {
@@ -1694,7 +1993,6 @@
     }
 
     /* ---------- 游戏进行中 ---------- */
-    // 一旦不再 gameOver，重置弹窗状态
     if (resultModalShown) {
       resultModalShown = false;
       hideResultModal();
@@ -1781,7 +2079,7 @@
   }
 
   /* =========================================================
-   *  十一、结束弹窗逻辑
+   *  十二、结束弹窗逻辑
    * ========================================================= */
 
   function showResultModal() {
@@ -1809,11 +2107,14 @@
 
   function hideResultModal() {
     resultModal.classList.add('hidden');
-    document.body.style.overflow = '';
+    // 只有在历史弹窗也关闭的情况下才恢复滚动
+    if (historyHomeModal.classList.contains('hidden')) {
+      document.body.style.overflow = '';
+    }
   }
 
   /* =========================================================
-   *  十二、生成结果图片
+   *  十三、生成结果图片
    * ========================================================= */
 
   function roundRect(ctx, x, y, w, h, r) {
@@ -1830,7 +2131,6 @@
     ctx.closePath();
   }
 
-  // 用省略号截断超长文本
   function drawTextTruncated(ctx, text, x, y, maxWidth) {
     if (ctx.measureText(text).width <= maxWidth) {
       ctx.fillText(text, x, y);
@@ -1843,12 +2143,10 @@
     ctx.fillText(truncated + '…', x, y);
   }
 
-  // 生成结果图（返回 canvas）
   function generateResultImage() {
     const rounds = (state && state.history) ? state.history : [];
     const scale = 2;
 
-    // 逻辑尺寸
     const width = 375;
     const cardMargin = 12;
     const cardW = width - cardMargin * 2;
@@ -1870,7 +2168,6 @@
     const ctx = canvas.getContext('2d');
     ctx.scale(scale, scale);
 
-    // 背景渐变
     const bgGrad = ctx.createLinearGradient(0, 0, width, height);
     bgGrad.addColorStop(0, '#fff9e6');
     bgGrad.addColorStop(0.55, '#ffe6f0');
@@ -1878,7 +2175,6 @@
     ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, width, height);
 
-    // 卡片阴影
     const cardX = cardMargin;
     const cardY = cardMargin;
 
@@ -1891,7 +2187,6 @@
     ctx.fill();
     ctx.restore();
 
-    // 卡片描边
     roundRect(ctx, cardX, cardY, cardW, cardH, 24);
     ctx.strokeStyle = '#fff0f5';
     ctx.lineWidth = 2;
@@ -1899,63 +2194,53 @@
 
     let y = cardY + cardPadTop;
 
-    // 主标题
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.font = 'bold 20px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif';
     ctx.fillStyle = '#ff6f91';
     ctx.fillText('🌸 同词相遇 🌸', width / 2, y + 16);
 
-    // 副标题
     ctx.font = '12px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif';
     ctx.fillStyle = '#b68b9c';
     ctx.fillText('✨ 心有灵犀一点通 ✨', width / 2, y + 42);
 
     y += titleH;
 
-    // 成功标题
     ctx.font = 'bold 18px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif';
     ctx.fillStyle = '#ff6f91';
     ctx.fillText('🎉 成功相遇！ 🎉', width / 2, y + 18);
 
-    // 成功副标题
     ctx.font = '13px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif';
     ctx.fillStyle = '#c2839a';
     ctx.fillText('经过 ' + rounds.length + ' 轮，你们选择了相同的词', width / 2, y + 48);
 
     y += resultH;
 
-    // 列表背景
     roundRect(ctx, cardX + 16, y, cardW - 32, listH, 16);
     ctx.fillStyle = '#fff5f8';
     ctx.fill();
 
-    // 列表项
     y += listPad;
     rounds.forEach(function (item) {
       const rowCenterY = y + itemH / 2;
       const centerX = cardX + cardW / 2 + 20;
 
-      // 轮次标签
       ctx.textAlign = 'left';
       ctx.font = 'bold 13px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif';
       ctx.fillStyle = '#ff8da1';
       ctx.textBaseline = 'middle';
       ctx.fillText('第' + item.round + '轮', cardX + 34, rowCenterY);
 
-      // 词1（右对齐）
       ctx.textAlign = 'right';
       ctx.font = 'bold 14px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif';
       ctx.fillStyle = '#b3536b';
       drawTextTruncated(ctx, item.p1 || '——', centerX - 20, rowCenterY, 95);
 
-      // 心
       ctx.textAlign = 'center';
       ctx.font = '13px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif';
       ctx.fillStyle = '#ff9db0';
       ctx.fillText('💞', centerX, rowCenterY);
 
-      // 词2（左对齐）
       ctx.textAlign = 'left';
       ctx.font = 'bold 14px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif';
       ctx.fillStyle = '#b3536b';
@@ -1966,7 +2251,6 @@
 
     y += listPad;
 
-    // 底部信息
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.font = '11px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif';
@@ -1977,7 +2261,6 @@
     return canvas;
   }
 
-  // 保存 / 预览图片
   function saveResultImage() {
     if (!state || !state.history || state.history.length === 0) {
       showToast('还没有可保存的记录');
@@ -1988,18 +2271,15 @@
     saveImgBtn.textContent = '生成中...';
     saveImgBtn.disabled = true;
 
-    // 让 UI 先显示"生成中"
     setTimeout(function () {
       try {
         const canvas = generateResultImage();
         const dataUrl = canvas.toDataURL('image/png');
 
         if (isWeixin() || isMobile()) {
-          // 微信 / 移动端：显示预览，让用户长按保存
           previewImg.src = dataUrl;
           imgPreviewModal.classList.remove('hidden');
         } else {
-          // 桌面端：直接下载
           try {
             const a = document.createElement('a');
             a.href = dataUrl;
@@ -2009,7 +2289,6 @@
             document.body.removeChild(a);
             showToast('💾 图片已保存');
           } catch (e) {
-            // 下载失败，降级到预览
             previewImg.src = dataUrl;
             imgPreviewModal.classList.remove('hidden');
           }
@@ -2025,7 +2304,7 @@
   }
 
   /* =========================================================
-   *  十三、返回主页
+   *  十四、返回主页
    * ========================================================= */
 
   function goHome() {
@@ -2046,6 +2325,7 @@
     resultModalShown = false;
 
     hideResultModal();
+    hideHistoryHomeModal();
     imgPreviewModal.classList.add('hidden');
 
     clearSession();
@@ -2064,7 +2344,7 @@
   }
 
   /* =========================================================
-   *  十四、事件绑定
+   *  十五、事件绑定
    * ========================================================= */
 
   homeBtn.addEventListener('click', function () {
@@ -2074,6 +2354,7 @@
   });
 
   createRoomBtn.addEventListener('click', function () {
+    hideHistoryHomeModal();
     if (peer && !peer.destroyed) {
       try { peer.destroy(); } catch (e) {}
       peer = null;
@@ -2093,6 +2374,7 @@
       joinRoomInput.focus();
       return;
     }
+    hideHistoryHomeModal();
     joinRoom(code);
   });
 
@@ -2101,6 +2383,28 @@
       e.preventDefault();
       joinRoomBtn.click();
     }
+  });
+
+  // 主页历史记录按钮
+  historyHomeBtn.addEventListener('click', function () {
+    showHistoryHomeModal();
+  });
+
+  // 关闭主页历史弹窗
+  closeHistoryBtn.addEventListener('click', function () {
+    hideHistoryHomeModal();
+  });
+
+  // 清空历史记录
+  clearHistoryBtn.addEventListener('click', function () {
+    if (!confirm('确定清空所有历史记录吗？此操作不可恢复。')) return;
+    try {
+      localStorage.removeItem(LS_HISTORY_LIST);
+      localStorage.removeItem(LS_SAVED_SIGS);
+    } catch (e) {}
+    renderHistoryHomeModal();
+    refreshHistoryBadge();
+    showToast('已清空历史记录');
   });
 
   roomIdDisplay.addEventListener('click', function () {
@@ -2162,10 +2466,8 @@
     showToast('新的一局开始啦 🌸');
   });
 
-  // 弹窗内：保存图片
   saveImgBtn.addEventListener('click', saveResultImage);
 
-  // 弹窗内：再来一局
   resultAgainBtn.addEventListener('click', function () {
     hideResultModal();
     sendAction('again');
@@ -2173,14 +2475,13 @@
     showToast('新的一局开始啦 🌸');
   });
 
-  // 图片预览关闭
   imgPreviewClose.addEventListener('click', function () {
     imgPreviewModal.classList.add('hidden');
     previewImg.src = '';
   });
 
   /* =========================================================
-   *  十五、可见性监听
+   *  十六、可见性监听
    * ========================================================= */
   document.addEventListener('visibilitychange', function () {
     if (document.visibilityState !== 'visible') return;
@@ -2208,9 +2509,12 @@
   });
 
   /* =========================================================
-   *  十六、初始化
+   *  十七、初始化
    * ========================================================= */
   window.addEventListener('DOMContentLoaded', function () {
+    // 刷新角标
+    refreshHistoryBadge();
+
     const params = new URLSearchParams(window.location.search);
     const roomFromUrl = params.get('room');
     const savedRoom = localStorage.getItem(LS_ROOM);
