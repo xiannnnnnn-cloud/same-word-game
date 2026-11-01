@@ -42,6 +42,11 @@
     to   { transform: scale(1);    opacity: 1; }
   }
 
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
   /* 右上角返回主页按钮 */
   .home-btn {
     position: absolute;
@@ -571,6 +576,205 @@
     opacity: 1;
     transform: translateX(-50%) translateY(0);
   }
+
+  /* ===== 结束弹窗 ===== */
+  .result-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 18px;
+  }
+  .result-modal-mask {
+    position: absolute;
+    inset: 0;
+    background: rgba(60, 30, 45, 0.45);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    animation: fadeIn 0.25s ease;
+  }
+  .result-modal-card {
+    position: relative;
+    width: 100%;
+    max-width: 400px;
+    max-height: 88vh;
+    background: #ffffff;
+    border-radius: 32px;
+    box-shadow: 0 20px 60px rgba(255, 150, 180, 0.45);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: popIn 0.4s cubic-bezier(0.3, 1.4, 0.6, 1);
+  }
+  .result-modal-header {
+    text-align: center;
+    padding: 24px 20px 16px;
+    background: linear-gradient(180deg, #fff5f8, #ffffff);
+    flex-shrink: 0;
+  }
+  .result-modal-emoji {
+    font-size: 2.4rem;
+    margin-bottom: 4px;
+    line-height: 1;
+  }
+  .result-modal-title {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #ff6f91;
+    text-shadow: 0 4px 8px #ffe2e9;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+  }
+  .result-modal-sub {
+    font-size: 0.85rem;
+    color: #c2839a;
+    font-weight: 600;
+  }
+  .result-modal-sub span {
+    color: #ff6f91;
+    font-weight: 800;
+    font-size: 1rem;
+  }
+  .result-modal-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 60px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .result-modal-list::-webkit-scrollbar { width: 4px; }
+  .result-modal-list::-webkit-scrollbar-thumb {
+    background: #ffc7d4;
+    border-radius: 10px;
+  }
+  .result-modal-item {
+    background: #fff5f8;
+    border: 1px solid #ffe2ea;
+    border-radius: 20px;
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.88rem;
+    font-weight: 600;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .result-modal-item .round-tag {
+    color: #ff8da1;
+    font-size: 0.78rem;
+    white-space: nowrap;
+    flex-shrink: 0;
+    font-weight: 700;
+  }
+  .result-modal-item .word-pair {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .result-modal-item .word-pair span {
+    background: #ffffff;
+    padding: 3px 12px;
+    border-radius: 30px;
+    color: #b3536b;
+    font-weight: 700;
+    max-width: 110px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .result-modal-actions {
+    padding: 16px 18px 20px;
+    display: flex;
+    gap: 10px;
+    background: #ffffff;
+    border-top: 1px solid #fff0f5;
+    flex-shrink: 0;
+  }
+  .save-img-btn, .result-again-btn {
+    flex: 1;
+    padding: 14px 8px;
+    border-radius: 40px;
+    font-size: 0.95rem;
+    letter-spacing: 1px;
+  }
+  .save-img-btn {
+    background: linear-gradient(180deg, #8bd3dd, #6dc4d0);
+    color: #15505a;
+    box-shadow: 0 5px 0 #579aa6;
+  }
+  .save-img-btn:active {
+    transform: translateY(4px);
+    box-shadow: 0 1px 0 #579aa6;
+  }
+  .result-again-btn {
+    background: linear-gradient(180deg, #ffb6c1, #ff9db0);
+    color: #fff;
+    box-shadow: 0 5px 0 #d98a9b;
+    text-shadow: 0 1px 2px #d97a90;
+  }
+  .result-again-btn:active {
+    transform: translateY(4px);
+    box-shadow: 0 1px 0 #d98a9b;
+  }
+
+  /* ===== 图片预览（微信保存用） ===== */
+  .img-preview-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 10001;
+    background: rgba(0, 0, 0, 0.88);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .img-preview-tip {
+    color: #fff;
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 16px;
+    background: rgba(255, 255, 255, 0.15);
+    padding: 8px 20px;
+    border-radius: 30px;
+    animation: pulseTip 1.8s ease infinite;
+    text-align: center;
+  }
+  @keyframes pulseTip {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.55; }
+  }
+  .img-preview-wrap {
+    max-width: 100%;
+    max-height: 68vh;
+    overflow: auto;
+    border-radius: 16px;
+    -webkit-overflow-scrolling: touch;
+    background: #fff;
+  }
+  .img-preview-wrap img {
+    display: block;
+    max-width: 100%;
+    border-radius: 16px;
+  }
+  .img-preview-close {
+    margin-top: 20px;
+    background: rgba(255, 255, 255, 0.2);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    padding: 10px 32px;
+    border-radius: 30px;
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
 </style>
 </head>
 <body>
@@ -652,6 +856,32 @@
 
   <!-- 浮动提示 -->
   <div class="toast" id="toast"></div>
+
+  <!-- 结束弹窗 -->
+  <div class="result-modal hidden" id="resultModal">
+    <div class="result-modal-mask"></div>
+    <div class="result-modal-card">
+      <div class="result-modal-header">
+        <div class="result-modal-emoji">🎉</div>
+        <div class="result-modal-title">成功相遇！</div>
+        <div class="result-modal-sub">经过 <span id="resultRounds">0</span> 轮，你们选择了相同的词</div>
+      </div>
+      <div class="result-modal-list" id="resultModalList"></div>
+      <div class="result-modal-actions">
+        <button class="save-img-btn" id="saveImgBtn">💾 保存图片</button>
+        <button class="result-again-btn" id="resultAgainBtn">🌸 再来一局</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 图片预览（微信内长按保存） -->
+  <div class="img-preview-modal hidden" id="imgPreviewModal">
+    <div class="img-preview-tip">👇 长按图片保存到相册</div>
+    <div class="img-preview-wrap">
+      <img id="previewImg" alt="相遇轨迹" />
+    </div>
+    <button class="img-preview-close" id="imgPreviewClose">关闭</button>
+  </div>
 </div>
 
 <!-- PeerJS：免费公共信令服务器，用于 WebRTC 建立点对点连接 -->
@@ -665,24 +895,24 @@
    *  一、全局状态
    * ========================================================= */
   let peer = null;              // PeerJS 实例
-  let conn = null;              // 数据连接（主机最多只维护一个）
-  let isHost = false;           // 是否是当前房间的"主机"（原房主或接管者）
-  let myRole = 'p1';            // 自己的游戏座位：'p1' 或 'p2'
+  let conn = null;              // 数据连接
+  let isHost = false;           // 是否是房间主机
+  let myRole = 'p1';            // 座位：'p1' 或 'p2'
   let roomId = '';              // 当前房间号
   let state = null;             // 游戏状态（主机权威，客户端镜像）
   let retryCount = 0;           // 客户端连接重试次数
-  let nextRoundTimer = null;    // 词不同时自动下一轮的定时器（仅主机端）
+  let nextRoundTimer = null;    // 词不同时自动下一轮的定时器
   let reconnectTimer = null;    // 客户端断线重连定时器
   let hostRestoreAttempt = 0;   // 主机恢复房间号的重试次数
-  let takeoverAttempted = false;// 本次会话是否已尝试过接管
+  let takeoverAttempted = false;// 是否已尝试接管
 
-  // localStorage 会话键名
-  const LS_IS_HOST = 'tongci_is_host';  // 'true' | 'false'
-  const LS_MY_ROLE = 'tongci_my_role';  // 'p1' | 'p2'
-  const LS_ROOM    = 'tongci_room';     // 房间号
-  const LS_STATE   = 'tongci_state_';   // 状态快照前缀（含房间号）
+  let resultModalShown = false; // 结束弹窗是否已经弹出（防止重复弹）
 
-  // 接管阈值：客户端连续连不上房主多少次后，尝试接管
+  const LS_IS_HOST = 'tongci_is_host';
+  const LS_MY_ROLE = 'tongci_my_role';
+  const LS_ROOM    = 'tongci_room';
+  const LS_STATE   = 'tongci_state_';
+
   const TAKEOVER_THRESHOLD = 8;
 
   /* =========================================================
@@ -693,7 +923,6 @@
   const homeBtn         = $('homeBtn');
   const homeArea        = $('homeArea');
   const createRoomBtn   = $('createRoomBtn');
-  const joinRoomArea    = $('joinRoomArea');
   const joinRoomInput   = $('joinRoomInput');
   const joinRoomBtn     = $('joinRoomBtn');
   const roomArea        = $('roomArea');
@@ -714,6 +943,18 @@
   const successMessage  = $('successMessage');
   const againBtn        = $('againBtn');
   const toast           = $('toast');
+
+  // 结束弹窗相关
+  const resultModal     = $('resultModal');
+  const resultRounds    = $('resultRounds');
+  const resultModalList = $('resultModalList');
+  const saveImgBtn      = $('saveImgBtn');
+  const resultAgainBtn  = $('resultAgainBtn');
+
+  // 图片预览
+  const imgPreviewModal = $('imgPreviewModal');
+  const previewImg      = $('previewImg');
+  const imgPreviewClose = $('imgPreviewClose');
 
   /* =========================================================
    *  三、工具函数
@@ -750,8 +991,14 @@
       .replace(/"/g, '&quot;');
   }
 
-  function otherSeat(role) {
-    return role === 'p1' ? 'p2' : 'p1';
+  function otherSeat(role) { return role === 'p1' ? 'p2' : 'p1'; }
+
+  function isWeixin() {
+    return /micromessenger/i.test(navigator.userAgent.toLowerCase());
+  }
+
+  function isMobile() {
+    return /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(navigator.userAgent.toLowerCase());
   }
 
   function copyText(text, successMsg) {
@@ -791,7 +1038,7 @@
         localStorage.setItem(LS_IS_HOST, isHost ? 'true' : 'false');
         localStorage.setItem(LS_MY_ROLE, myRole);
       }
-    } catch (e) { /* 隐私模式可能报错，忽略 */ }
+    } catch (e) {}
   }
 
   function saveStateSnapshot() {
@@ -824,7 +1071,6 @@
    *  五、游戏状态与主机权威逻辑
    * ========================================================= */
 
-  // 空座位：无数据、未提交、未认同、不在线
   function emptySeat() {
     return { word: '', submitted: false, agreed: false, online: false };
   }
@@ -874,7 +1120,6 @@
     state.lastP1 = state.p1.word;
     state.lastP2 = state.p2.word;
     state.round += 1;
-    // 重置本轮提交状态，保留 online 标记
     const p1Online = state.p1.online;
     const p2Online = state.p2.online;
     state.p1 = emptySeat();
@@ -902,7 +1147,6 @@
     }
   }
 
-  // 处理一个动作（role: 'p1' | 'p2'）
   function handleAction(role, action, data) {
     if (!isHost) return;
     if (!state) state = initialState();
@@ -944,9 +1188,7 @@
     if (!isHost) return;
     saveStateSnapshot();
     if (conn && conn.open && state) {
-      try {
-        conn.send({ type: 'state', state: state });
-      } catch (e) {}
+      try { conn.send({ type: 'state', state: state }); } catch (e) {}
     }
   }
 
@@ -974,32 +1216,25 @@
   }
 
   /* =========================================================
-   *  六、连接处理：主机接收新玩家 / 断线 / 角色分配
+   *  六、连接处理
    * ========================================================= */
 
-  // 主机处理新连接（原房主或接管者都会用这个）
   function handleNewConnection(connection) {
-    // 主机自己在 myRole 座位；对方应该是另一个座位
     const other = otherSeat(myRole);
 
-    // 如果已经有连接了，拒绝（房间里最多 2 人）
     if (conn && conn.open) {
       try { connection.close(); } catch (e) {}
       return;
     }
-
-    // 另一个座位已经有在线玩家，拒绝
     if (state && state[other] && state[other].online) {
       try { connection.close(); } catch (e) {}
       return;
     }
 
-    // 分配另一个座位给新玩家，重置座位数据
     if (state) {
       state[other] = emptySeat();
       state[other].online = true;
 
-      // 如果游戏已结束，新玩家加入时重置游戏
       if (state.gameOver) {
         const myOnline = true;
         state = initialState();
@@ -1011,7 +1246,6 @@
     conn = connection;
     setupConnection();
 
-    // 连接打开后发送角色分配 + 状态
     conn.on('open', () => {
       try {
         conn.send({ type: 'assign', role: other });
@@ -1025,19 +1259,13 @@
     render();
   }
 
-  // 建立连接后的通用事件绑定
   function setupConnection() {
     if (!conn) return;
-
-    conn.on('open', () => {
-      // 打开后行为放在 handleNewConnection / connectToHost 各自处理
-    });
 
     conn.on('data', (data) => {
       if (!data || typeof data !== 'object') return;
 
       if (isHost) {
-        // 主机端接收对方动作 / 心跳 / hello
         if (data.type === 'action') {
           handleAction(data.role || 'p2', data.action, data.data);
         } else if (data.type === 'hello') {
@@ -1046,13 +1274,11 @@
           try { conn.send({ type: 'pong' }); } catch (e) {}
         }
       } else {
-        // 客户端接收角色分配 / 状态 / 心跳
         if (data.type === 'state' && data.state) {
           state = data.state;
           render();
         } else if (data.type === 'assign' && data.role) {
           myRole = data.role;
-          // 如果之前输入了内容，清空避免混淆
           wordInput.value = '';
           saveSession();
           render();
@@ -1063,7 +1289,6 @@
     });
 
     conn.on('close', () => {
-      // 主机端：对方离线，释放对方座位
       if (isHost) {
         const other = otherSeat(myRole);
         if (state && state[other]) {
@@ -1094,7 +1319,6 @@
    *  七、PeerJS：创建 / 加入 / 接管
    * ========================================================= */
 
-  // 创建房间（原房主）
   function createRoom() {
     isHost = true;
     myRole = 'p1';
@@ -1109,7 +1333,7 @@
 
     peer.on('open', () => {
       state = initialState();
-      state.p1.online = true;   // 自己是 p1，在线
+      state.p1.online = true;
       saveSession();
       saveStateSnapshot();
 
@@ -1131,10 +1355,9 @@
     peer.on('error', handlePeerError);
   }
 
-  // 加入房间（作为客户端）
   function joinRoom(code) {
     isHost = false;
-    myRole = 'p2'; // 暂定，等主机 assign
+    myRole = 'p2';
     roomId = code.toUpperCase();
     retryCount = 0;
     takeoverAttempted = false;
@@ -1162,7 +1385,6 @@
     peer.on('error', handlePeerError);
   }
 
-  // 客户端连接主机
   function connectToHost() {
     if (!peer || peer.destroyed) return;
     if (conn && conn.open) return;
@@ -1180,7 +1402,6 @@
     }
   }
 
-  // 客户端断线重连调度
   function scheduleReconnect() {
     if (isHost) return;
     if (reconnectTimer) return;
@@ -1194,7 +1415,6 @@
     }, 2500);
   }
 
-  // PeerJS 错误处理
   function handlePeerError(err) {
     console.error('[PeerJS Error]', err);
 
@@ -1207,7 +1427,6 @@
             if (!conn || !conn.open) connectToHost();
           }, 3000);
         } else if (!takeoverAttempted) {
-          // 达到阈值 → 尝试接管
           tryTakeover();
         }
       }
@@ -1230,37 +1449,31 @@
   }
 
   /* =========================================================
-   *  八、接管：客户端长时间连不上房主，接管房间成为新主机
+   *  八、接管
    * ========================================================= */
 
   function tryTakeover() {
     takeoverAttempted = true;
     setConnStatus('房主长时间未响应，正在接管房间...');
 
-    // 销毁旧 peer
     if (peer && !peer.destroyed) {
       try { peer.destroy(); } catch (e) {}
     }
 
-    // 用原房主 ID 注册
     peer = new Peer('tongci-' + roomId, { debug: 0 });
 
     peer.on('open', () => {
-      // 接管成功 → 成为新主机
       isHost = true;
 
-      // 恢复状态快照
       const snapshot = loadStateSnapshot();
       state = snapshot || initialState();
 
-      // 重置在线与座位数据：自己在线、对方离线并清空
       state[myRole].online = true;
       state[myRole].submitted = false;
       state[myRole].agreed = false;
       state[myRole].word = '';
       state[otherSeat(myRole)] = emptySeat();
 
-      // 保留历史记录、轮数等
       state.gameOver = false;
       state.pendingNextRound = false;
 
@@ -1282,7 +1495,6 @@
 
     peer.on('error', (err) => {
       if (err.type === 'unavailable-id') {
-        // 房主又回来了 → 降级为客户端，尝试连接
         setConnStatus('房主已上线，正在连接...');
         isHost = false;
         takeoverAttempted = false;
@@ -1307,21 +1519,17 @@
   }
 
   /* =========================================================
-   *  九、会话恢复（刷新 / 切回前台）
+   *  九、会话恢复
    * ========================================================= */
 
-  // 恢复为主机：使用相同 Peer ID 重新注册
   function resumeHost() {
     isHost = true;
-    // myRole 由调用方设置（原房主 p1 / 接管者 p2）
     hostRestoreAttempt = 0;
-    takeoverAttempted = true; // 已是主机，无需再次接管
+    takeoverAttempted = true;
 
-    // 恢复状态
     const snapshot = loadStateSnapshot();
     state = snapshot || initialState();
 
-    // 自己是主机 → 自己在线，对方离线并清空（对手需要重连）
     state[myRole].online = true;
     state[myRole].submitted = false;
     state[myRole].agreed = false;
@@ -1330,9 +1538,7 @@
     const other = otherSeat(myRole);
     state[other] = emptySeat();
 
-    // 检查是否还在等自动下一轮，重启定时器
     if (state.pendingNextRound && !state.gameOver) {
-      // 由于刷新导致定时器丢失，简单处理：立即进入下一轮
       state.pendingNextRound = false;
     }
 
@@ -1382,7 +1588,6 @@
     });
   }
 
-  // 恢复为客户端：新建 Peer，主动去连主机
   function resumeClient() {
     isHost = false;
     retryCount = 0;
@@ -1418,11 +1623,8 @@
   function updateURLRoom(code) {
     try {
       const url = new URL(window.location.href);
-      if (code) {
-        url.searchParams.set('room', code);
-      } else {
-        url.searchParams.delete('room');
-      }
+      if (code) url.searchParams.set('room', code);
+      else url.searchParams.delete('room');
       url.hash = '';
       window.history.replaceState(null, '', url.toString());
     } catch (e) {}
@@ -1445,7 +1647,6 @@
 
   function render() {
     if (!state) {
-      // 客户端刚连上还没收到状态时
       wordInput.disabled = true;
       submitWordBtn.disabled = true;
       roundCounter.textContent = '第 — 轮';
@@ -1481,21 +1682,33 @@
       lastP2Word.textContent = state.lastP2 || '——';
 
       renderHistory();
+
+      // 显示弹窗（每局只弹一次）
+      if (!resultModalShown) {
+        resultModalShown = true;
+        setTimeout(function () {
+          if (state && state.gameOver) showResultModal();
+        }, 350);
+      }
       return;
     }
 
     /* ---------- 游戏进行中 ---------- */
+    // 一旦不再 gameOver，重置弹窗状态
+    if (resultModalShown) {
+      resultModalShown = false;
+      hideResultModal();
+    }
+
     successMessage.classList.add('hidden');
     againBtn.classList.add('hidden');
     agreeBtn.classList.remove('hidden');
     restartRoundBtn.classList.remove('hidden');
     restartRoundBtn.textContent = '🔄 全部重来';
 
-    // 对手是否在线
     const otherOnline = other && other.online;
 
     if (state.pendingNextRound) {
-      // 双方已提交但词不同
       wordInput.disabled = true;
       submitWordBtn.disabled = true;
       wordInput.classList.remove('other-submitted');
@@ -1513,9 +1726,7 @@
         agreeBtn.textContent = '✅ 认为词一样';
         agreeBtn.disabled = false;
       }
-
     } else {
-      // 正常提交阶段
       if (me.submitted) {
         wordInput.disabled = true;
         submitWordBtn.disabled = true;
@@ -1526,7 +1737,6 @@
         submitWordBtn.disabled = false;
 
         if (!otherOnline) {
-          // 对方离线 → 提示等待新玩家
           playerStatus.textContent = '⏳ 等待另一位玩家加入...';
           wordInput.classList.remove('other-submitted');
         } else if (other && other.submitted) {
@@ -1571,11 +1781,254 @@
   }
 
   /* =========================================================
-   *  十一、返回主页
+   *  十一、结束弹窗逻辑
+   * ========================================================= */
+
+  function showResultModal() {
+    if (!state || !state.history) return;
+
+    resultRounds.textContent = state.history.length;
+
+    let html = '';
+    state.history.forEach(function (item) {
+      html +=
+        '<div class="result-modal-item">' +
+          '<span class="round-tag">第' + item.round + '轮</span>' +
+          '<span class="word-pair">' +
+            '<span>' + escapeHtml(item.p1) + '</span>' +
+            '<span>💞</span>' +
+            '<span>' + escapeHtml(item.p2) + '</span>' +
+          '</span>' +
+        '</div>';
+    });
+    resultModalList.innerHTML = html;
+
+    resultModal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function hideResultModal() {
+    resultModal.classList.add('hidden');
+    document.body.style.overflow = '';
+  }
+
+  /* =========================================================
+   *  十二、生成结果图片
+   * ========================================================= */
+
+  function roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+  }
+
+  // 用省略号截断超长文本
+  function drawTextTruncated(ctx, text, x, y, maxWidth) {
+    if (ctx.measureText(text).width <= maxWidth) {
+      ctx.fillText(text, x, y);
+      return;
+    }
+    let truncated = text;
+    while (truncated.length > 1 && ctx.measureText(truncated + '…').width > maxWidth) {
+      truncated = truncated.slice(0, -1);
+    }
+    ctx.fillText(truncated + '…', x, y);
+  }
+
+  // 生成结果图（返回 canvas）
+  function generateResultImage() {
+    const rounds = (state && state.history) ? state.history : [];
+    const scale = 2;
+
+    // 逻辑尺寸
+    const width = 375;
+    const cardMargin = 12;
+    const cardW = width - cardMargin * 2;
+    const cardPadTop = 24;
+    const cardPadBottom = 24;
+
+    const titleH = 68;
+    const resultH = 72;
+    const listPad = 10;
+    const itemH = 42;
+    const listH = rounds.length * itemH + listPad * 2;
+    const footerH = 44;
+    const cardH = cardPadTop + titleH + resultH + listH + footerH + cardPadBottom;
+    const height = cardH + cardMargin * 2;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width * scale;
+    canvas.height = height * scale;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(scale, scale);
+
+    // 背景渐变
+    const bgGrad = ctx.createLinearGradient(0, 0, width, height);
+    bgGrad.addColorStop(0, '#fff9e6');
+    bgGrad.addColorStop(0.55, '#ffe6f0');
+    bgGrad.addColorStop(1, '#e8f5ff');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, width, height);
+
+    // 卡片阴影
+    const cardX = cardMargin;
+    const cardY = cardMargin;
+
+    ctx.save();
+    ctx.shadowColor = 'rgba(255, 150, 180, 0.3)';
+    ctx.shadowBlur = 20;
+    ctx.shadowOffsetY = 8;
+    roundRect(ctx, cardX, cardY, cardW, cardH, 24);
+    ctx.fillStyle = '#ffffff';
+    ctx.fill();
+    ctx.restore();
+
+    // 卡片描边
+    roundRect(ctx, cardX, cardY, cardW, cardH, 24);
+    ctx.strokeStyle = '#fff0f5';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    let y = cardY + cardPadTop;
+
+    // 主标题
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = 'bold 20px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif';
+    ctx.fillStyle = '#ff6f91';
+    ctx.fillText('🌸 同词相遇 🌸', width / 2, y + 16);
+
+    // 副标题
+    ctx.font = '12px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif';
+    ctx.fillStyle = '#b68b9c';
+    ctx.fillText('✨ 心有灵犀一点通 ✨', width / 2, y + 42);
+
+    y += titleH;
+
+    // 成功标题
+    ctx.font = 'bold 18px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif';
+    ctx.fillStyle = '#ff6f91';
+    ctx.fillText('🎉 成功相遇！ 🎉', width / 2, y + 18);
+
+    // 成功副标题
+    ctx.font = '13px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif';
+    ctx.fillStyle = '#c2839a';
+    ctx.fillText('经过 ' + rounds.length + ' 轮，你们选择了相同的词', width / 2, y + 48);
+
+    y += resultH;
+
+    // 列表背景
+    roundRect(ctx, cardX + 16, y, cardW - 32, listH, 16);
+    ctx.fillStyle = '#fff5f8';
+    ctx.fill();
+
+    // 列表项
+    y += listPad;
+    rounds.forEach(function (item) {
+      const rowCenterY = y + itemH / 2;
+      const centerX = cardX + cardW / 2 + 20;
+
+      // 轮次标签
+      ctx.textAlign = 'left';
+      ctx.font = 'bold 13px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif';
+      ctx.fillStyle = '#ff8da1';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('第' + item.round + '轮', cardX + 34, rowCenterY);
+
+      // 词1（右对齐）
+      ctx.textAlign = 'right';
+      ctx.font = 'bold 14px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif';
+      ctx.fillStyle = '#b3536b';
+      drawTextTruncated(ctx, item.p1 || '——', centerX - 20, rowCenterY, 95);
+
+      // 心
+      ctx.textAlign = 'center';
+      ctx.font = '13px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif';
+      ctx.fillStyle = '#ff9db0';
+      ctx.fillText('💞', centerX, rowCenterY);
+
+      // 词2（左对齐）
+      ctx.textAlign = 'left';
+      ctx.font = 'bold 14px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif';
+      ctx.fillStyle = '#b3536b';
+      drawTextTruncated(ctx, item.p2 || '——', centerX + 20, rowCenterY, 95);
+
+      y += itemH;
+    });
+
+    y += listPad;
+
+    // 底部信息
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = '11px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif';
+    ctx.fillStyle = '#c9a3b0';
+    const dateStr = new Date().toLocaleDateString('zh-CN');
+    ctx.fillText('— 房间 ' + roomId + ' · ' + dateStr + ' —', width / 2, y + 22);
+
+    return canvas;
+  }
+
+  // 保存 / 预览图片
+  function saveResultImage() {
+    if (!state || !state.history || state.history.length === 0) {
+      showToast('还没有可保存的记录');
+      return;
+    }
+
+    const originalText = saveImgBtn.textContent;
+    saveImgBtn.textContent = '生成中...';
+    saveImgBtn.disabled = true;
+
+    // 让 UI 先显示"生成中"
+    setTimeout(function () {
+      try {
+        const canvas = generateResultImage();
+        const dataUrl = canvas.toDataURL('image/png');
+
+        if (isWeixin() || isMobile()) {
+          // 微信 / 移动端：显示预览，让用户长按保存
+          previewImg.src = dataUrl;
+          imgPreviewModal.classList.remove('hidden');
+        } else {
+          // 桌面端：直接下载
+          try {
+            const a = document.createElement('a');
+            a.href = dataUrl;
+            a.download = '同词相遇_' + roomId + '_' + Date.now() + '.png';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            showToast('💾 图片已保存');
+          } catch (e) {
+            // 下载失败，降级到预览
+            previewImg.src = dataUrl;
+            imgPreviewModal.classList.remove('hidden');
+          }
+        }
+      } catch (e) {
+        console.error(e);
+        showToast('生成图片失败，请重试');
+      } finally {
+        saveImgBtn.textContent = originalText;
+        saveImgBtn.disabled = false;
+      }
+    }, 60);
+  }
+
+  /* =========================================================
+   *  十三、返回主页
    * ========================================================= */
 
   function goHome() {
-    // 清理连接与状态
     clearNextTimer();
     if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
     try {
@@ -1590,13 +2043,15 @@
     retryCount = 0;
     takeoverAttempted = false;
     hostRestoreAttempt = 0;
+    resultModalShown = false;
 
-    // 清理会话
+    hideResultModal();
+    imgPreviewModal.classList.add('hidden');
+
     clearSession();
     roomId = '';
     updateURLRoom('');
 
-    // 恢复界面
     wordInput.value = '';
     joinRoomInput.value = '';
     createRoomBtn.disabled = false;
@@ -1609,17 +2064,15 @@
   }
 
   /* =========================================================
-   *  十二、事件绑定
+   *  十四、事件绑定
    * ========================================================= */
 
-  // 返回主页
   homeBtn.addEventListener('click', function () {
     if (confirm('确定返回主页吗？当前房间的连接将断开。')) {
       goHome();
     }
   });
 
-  // 创建房间
   createRoomBtn.addEventListener('click', function () {
     if (peer && !peer.destroyed) {
       try { peer.destroy(); } catch (e) {}
@@ -1633,7 +2086,6 @@
     createRoom();
   });
 
-  // 手动输入房间号加入
   joinRoomBtn.addEventListener('click', function () {
     const code = (joinRoomInput.value || '').trim().toUpperCase();
     if (!code || code.length !== 6) {
@@ -1651,13 +2103,11 @@
     }
   });
 
-  // 点击房间号复制
   roomIdDisplay.addEventListener('click', function () {
     if (!roomId) return;
     copyText(roomId, '📋 房间号已复制：' + roomId);
   });
 
-  // 邀请好友（复制带房间号的链接）
   inviteBtn.addEventListener('click', function () {
     if (!roomId) {
       showToast('房间尚未创建完成');
@@ -1669,7 +2119,6 @@
     copyText(url.toString(), '🔗 邀请链接已复制！发给好友吧');
   });
 
-  // 提交词语
   submitWordBtn.addEventListener('click', function () {
     if (!state) { showToast('游戏尚未开始'); return; }
 
@@ -1713,13 +2162,29 @@
     showToast('新的一局开始啦 🌸');
   });
 
+  // 弹窗内：保存图片
+  saveImgBtn.addEventListener('click', saveResultImage);
+
+  // 弹窗内：再来一局
+  resultAgainBtn.addEventListener('click', function () {
+    hideResultModal();
+    sendAction('again');
+    wordInput.value = '';
+    showToast('新的一局开始啦 🌸');
+  });
+
+  // 图片预览关闭
+  imgPreviewClose.addEventListener('click', function () {
+    imgPreviewModal.classList.add('hidden');
+    previewImg.src = '';
+  });
+
   /* =========================================================
-   *  十三、页面可见性监听
+   *  十五、可见性监听
    * ========================================================= */
   document.addEventListener('visibilitychange', function () {
     if (document.visibilityState !== 'visible') return;
 
-    // Peer 实例被回收 → 走完整恢复
     if (!peer || peer.destroyed) {
       const savedRoom = localStorage.getItem(LS_ROOM);
       const savedIsHost = localStorage.getItem(LS_IS_HOST);
@@ -1727,11 +2192,8 @@
       if (savedRoom && savedRole) {
         roomId = savedRoom;
         myRole = savedRole;
-        if (savedIsHost === 'true') {
-          resumeHost();
-        } else {
-          resumeClient();
-        }
+        if (savedIsHost === 'true') resumeHost();
+        else resumeClient();
       }
       return;
     }
@@ -1746,7 +2208,7 @@
   });
 
   /* =========================================================
-   *  十四、初始化
+   *  十六、初始化
    * ========================================================= */
   window.addEventListener('DOMContentLoaded', function () {
     const params = new URLSearchParams(window.location.search);
@@ -1755,39 +2217,28 @@
     const savedIsHost = localStorage.getItem(LS_IS_HOST);
     const savedRole = localStorage.getItem(LS_MY_ROLE);
 
-    // 1) URL 带房间号
     if (roomFromUrl && roomFromUrl.trim()) {
       const room = roomFromUrl.trim().toUpperCase();
       roomId = room;
 
       if (savedRoom === room && savedRole) {
-        // 同一人刷新 → 按原角色恢复
         myRole = savedRole;
-        if (savedIsHost === 'true') {
-          resumeHost();
-        } else {
-          resumeClient();
-        }
+        if (savedIsHost === 'true') resumeHost();
+        else resumeClient();
       } else {
-        // 首次通过链接加入
         joinRoom(room);
       }
       return;
     }
 
-    // 2) 本地有会话记录
     if (savedRoom && savedRole) {
       roomId = savedRoom;
       myRole = savedRole;
-      if (savedIsHost === 'true') {
-        resumeHost();
-      } else {
-        resumeClient();
-      }
+      if (savedIsHost === 'true') resumeHost();
+      else resumeClient();
       return;
     }
 
-    // 3) 全新用户
     showHomeUI();
     setConnStatus('点击下方按钮创建房间，或输入房间号加入');
   });
