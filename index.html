@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>接同词相遇｜房间版</title>
+  <style>
+    /* 全局基础，明亮可爱底色 */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: "Segoe UI", sans-serif;
+    }
+
+    body {
+      background-color: #fff8f0;
+      padding: 40px 20px;
+      max-width: 720px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      text-align: center;
+      color: #ff7b9c;
+      margin-bottom: 8px;
+    }
+
+    .tip {
+      text-align: center;
+      color: #888;
+      margin-bottom: 24px;
+    }
+
+    .room-info,
+    .round-count {
+      text-align: center;
+      margin-bottom: 16px;
+      font-size: 18px;
+      color: #ff9bb2;
+      font-weight: bold;
+    }
+
+    .invite-area {
+      background: #fff6f9;
+      padding: 20px;
+      border-radius: 22px;
+      margin-bottom: 20px;
+    }
+
+    .invite-area input {
+      margin-top: 10px;
+    }
+
+    .copy-tip {
+      margin-top: 10px;
+      font-size: 14px;
+      color: #34c787;
+      display: none;
+    }
+
+    .card {
+      background: white;
+      border-radius: 24px;
+      padding: 28px;
+      box-shadow: 0 8px 20px rgba(255, 123, 156, 0.12);
+      margin-bottom: 20px;
+    }
+
+    .input-area {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .player-box {
+      flex: 1;
+      min-width: 220px;
+    }
+
+    .player-box label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: bold;
+      color: #ff9bb2;
+    }
+
+    input {
+      width: 100%;
+      padding: 14px 16px;
+      border: 2px solid #ffe6ec;
+      border-radius: 18px;
+      font-size: 16px;
+      transition: border-color 0.2s;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: #ff7b9c;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      padding: 14px 26px;
+      border: none;
+      border-radius: 999px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.25s;
+    }
+
+    #submitBtn {
+      background-color: #ff7b9c;
+      color: white;
+    }
+
+    #restartBtn {
+      background-color: #fff0b3;
+      color: #c98b00;
+    }
+
+    #createRoomBtn,
+    #copyLinkBtn {
+      background-color: #dff7ee;
+      color: #2b9e68;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 14px rgba(0, 0, 0, 0.08);
+    }
+
+    .message {
+      margin: 22px 0;
+      font-size: 20px;
+      font-weight: bold;
+      text-align: center;
+      min-height: 32px;
+    }
+
+    .success {
+      color: #34c787;
+    }
+
+    .fail {
+      color: #ff914d;
+    }
+
+    .history-title {
+      margin-bottom: 12px;
+      font-weight: bold;
+      color: #ff7b9c;
+    }
+
+    .history-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .history-item {
+      background-color: #fff6f9;
+      padding: 16px;
+      border-radius: 20px;
+      border-left: 5px solid #ffb8c8;
+    }
+
+    .history-item.match {
+      background-color: #eefcf4;
+      border-left-color: #72e0a8;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>接同词相遇 ✨</h1>
+    <div class="tip">创建房间，复制链接发给朋友，一起猜词相遇！</div>
+
+    <div id="roomBox" class="room-info"></div>
+    <div id="roundBox" class="round-count"></div>
+
+    <div class="invite-area" id="inviteWrap" style="display:none;">
+      <div>🔗 邀请链接（发给好友）</div>
+      <input id="inviteLinkInput" readonly placeholder="生成邀请链接">
+      <div class="btn-group" style="margin-top:12px;">
+        <button id="copyLinkBtn">复制链接 📋</button>
+      </div>
+      <div id="copySuccessTip" class="copy-tip">✅ 已复制！发给小伙伴打开就进这个房间</div>
+    </div>
+
+    <div class="btn-group" id="roomCreateWrap">
+      <button id="createRoomBtn">创建新房间 🎉</button>
+    </div>
+
+    <div class="input-area" id="gameInputWrap" style="display:none;">
+      <div class="player-box">
+        <label for="p1">玩家 A</label>
+        <input id="p1" placeholder="输入你的词～">
+      </div>
+      <div class="player-box">
+        <label for="p2">玩家 B</label>
+        <input id="p2" placeholder="输入你的词～">
+      </div>
+    </div>
+
+    <div class="btn-group" id="gameBtnWrap" style="display:none;">
+      <button id="submitBtn">确认提交 🤍</button>
+      <button id="restartBtn">重新开始 🔄</button>
+    </div>
+
+    <div id="msgBox" class="message"></div>
+  </div>
+
+  <div class="card" id="historyCard" style="display:none;">
+    <div class="history-title">📜 全部记录</div>
+    <div id="historyBox" class="history-list"></div>
+  </div>
+
+  <script>
+    // 获取页面元素
+    const p1Input = document.getElementById('p1');
+    const p2Input = document.getElementById('p2');
+    const submitBtn = document.getElementById('submitBtn');
+    const restartBtn = document.getElementById('restartBtn');
+    const createRoomBtn = document.getElementById('createRoomBtn');
+    const copyLinkBtn = document.getElementById('copyLinkBtn');
+    const msgBox = document.getElementById('msgBox');
+    const historyBox = document.getElementById('historyBox');
+    const roundBox = document.getElementById('roundBox');
+    const roomBox = document.getElementById('roomBox');
+    const inviteWrap = document.getElementById('inviteWrap');
+    const inviteLinkInput = document.getElementById('inviteLinkInput');
+    const copySuccessTip = document.getElementById('copySuccessTip');
+    const roomCreateWrap = document.getElementById('roomCreateWrap');
+    const gameInputWrap = document.getElementById('gameInputWrap');
+    const gameBtnWrap = document.getElementById('gameBtnWrap');
+    const historyCard = document.getElementById('historyCard');
+
+    let roomId = '';
+    let history = [];
+    let roundNum = 0;
+
+    // 安全读取本地存储，防止浏览器隐私拦截报错
+    function safeStorageGet(key) {
+      try {
+        return localStorage.getItem(key);
+      } catch {
+        return null;
+      }
+    }
+    function safeStorageSet(key, value) {
+      try {
+        localStorage.setItem(key, value);
+      } catch {
+      }
+    }
+
+    // 从地址栏读取房间号（别人通过链接打开）
+    function readUrlRoom() {
+      const params = new URLSearchParams(location.search);
+      const rid = params.get('room');
+      if (rid) {
+        roomId = rid;
+        enterRoom();
+      }
+    }
+
+    // 生成随机房间 ID（6 位字母数字）
+    function makeRoomId() {
+      const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+      let id = '';
+      for (let i = 0; i < 6; i++) {
+        id += chars[Math.floor(Math.random() * chars.length)];
+      }
+      return id;
+    }
+
+    // 更新房间信息展示
+    function showRoomInfo() {
+      roomBox.textContent = `🏠 当前房间：${roomId}`;
+      inviteLinkInput.value = `${location.origin}${location.pathname}?room=${roomId}`;
+    }
+
+    // 进入房间，切换界面
+    function enterRoom() {
+      showRoomInfo();
+      inviteWrap.style.display = 'block';
+      roomCreateWrap.style.display = 'none';
+      gameInputWrap.style.display = 'flex';
+      gameBtnWrap.style.display = 'flex';
+      historyCard.style.display = 'block';
+      loadRoomData();
+      u
