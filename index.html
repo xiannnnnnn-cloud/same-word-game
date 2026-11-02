@@ -1048,6 +1048,35 @@
 
   const TAKEOVER_THRESHOLD = 8;
 
+  // PeerJS 配置：STUN + TURN，显著提升连接成功率
+  // 注意：openrelay 是公共免费 TURN，流量大时可能不稳定；
+  // 若长期使用建议自建 coturn 或换商业 TURN。
+  const PEER_CONFIG = {
+    debug: 0,
+    config: {
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'stun:stun.cloudflare.com:3478' },
+        {
+          urls: 'turn:openrelay.metered.ca:80',
+          username: 'openrelayproject',
+          credential: 'openrelayproject'
+        },
+        {
+          urls: 'turn:openrelay.metered.ca:443',
+          username: 'openrelayproject',
+          credential: 'openrelayproject'
+        },
+        {
+          urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+          username: 'openrelayproject',
+          credential: 'openrelayproject'
+        }
+      ]
+    }
+  };
+
   /* =========================================================
    *  二、DOM 引用
    * ========================================================= */
@@ -1515,47 +1544,54 @@
   function handleNewConnection(connection) {
     const other = otherSeat(myRole);
 
-    if (conn && conn.open) {
-      try { connection.close(); } catch (e) {}
-      return;
-    }
-    if (state && state[other] && state[other].online) {
-      try { connection.close(); } catch (e) {}
-      return;
+    // 允许好友刷新 / 断线重连 / 换设备：先关闭旧连接，不要拒绝
+    if (conn) {
+      try {
+        conn._replaced = true;
+        conn.close();
+      } catch (e) {}
+      conn = null;
     }
 
-    if (state) {
-      state[other] = emptySeat();
-      state[other].online = true;
+    if (!state) state = initialState();
 
-      if (state.gameOver) {
-        const myOnline = true;
-        state = initialState();  // 新的一局，新 startedAt
-        state[myRole].online = myOnline;
-        state[other].online = true;
-      }
+    // 如果上一局已经结束，这次连接视为新一局
+    if (state.gameOver) {
+      state = initialState();
     }
+
+    state[myRole].online = true;
+    state[other] = emptySeat();
+    state[other].online = true;
 
     conn = connection;
     setupConnection();
 
-    conn.on('open', () => {
+    let greeted = false;
+    const greet = () => {
+      if (greeted) return;
+      greeted = true;
+      if (conn !== connection) return; // 已被更新的连接替换
       try {
-        conn.send({ type: 'assign', role: other });
-        conn.send({ type: 'state', state: state });
+        connection.send({ type: 'assign', role: other });
+        connection.send({ type: 'state', state: state });
       } catch (e) {}
       setConnStatus('已连接 ✅', 'ok');
       render();
-    });
+    };
 
-    broadcastState();
+    if (connection.open) greet();
+    else connection.on('open', greet);
+
+    saveStateSnapshot();
     render();
   }
 
   function setupConnection() {
-    if (!conn) return;
+    const c = conn;
+    if (!c) return;
 
-    conn.on('data', (data) => {
+    c.on('data', (data) => {
       if (!data || typeof data !== 'object') return;
 
       if (isHost) {
@@ -1564,7 +1600,7 @@
         } else if (data.type === 'hello') {
           broadcastState();
         } else if (data.type === 'ping') {
-          try { conn.send({ type: 'pong' }); } catch (e) {}
+          try { c.send({ type: 'pong' }); } catch (e) {}
         }
       } else {
         if (data.type === 'state' && data.state) {
@@ -1576,12 +1612,15 @@
           saveSession();
           render();
         } else if (data.type === 'ping') {
-          try { conn.send({ type: 'pong' }); } catch (e) {}
+          try { c.send({ type: 'pong' }); } catch (e) {}
         }
       }
     });
 
-    conn.on('close', () => {
+    c.on('close', () => {
+      // 被新连接替换掉的旧连接，忽略
+      if (c !== conn) return;
+
       if (isHost) {
         const other = otherSeat(myRole);
         if (state && state[other]) {
@@ -1589,7 +1628,6 @@
           state[other].submitted = false;
           state[other].agreed = false;
           state[other].word = '';
-          broadcastState();
         }
         conn = null;
         setConnStatus('好友已断开，等待新玩家加入...', 'err');
@@ -1602,7 +1640,7 @@
       }
     });
 
-    conn.on('error', (err) => {
+    c.on('error', (err) => {
       console.error('[Conn Error]', err);
       if (!isHost) scheduleReconnect();
     });
@@ -1622,7 +1660,7 @@
     setConnStatus('正在创建房间...');
     createRoomBtn.disabled = true;
 
-    peer = new Peer('tongci-' + roomId, { debug: 0 });
+    peer = new Peer('tongci-' + roomId, PEER_CONFIG);
 
     peer.on('open', () => {
       state = initialState();
@@ -1662,9 +1700,16 @@
     createRoomBtn.disabled = true;
     joinRoomBtn.disabled = true;
 
-    peer = new Peer(null, { debug: 0 });
+    peer = new Peer(null, PEER_CONFIG);
+
+    const openTimer = setTimeout(() => {
+      if (!peer || peer.destroyed || !peer.open) {
+        setConnStatus('连接信令服务器超时，请检查网络后刷新重试', 'err');
+      }
+    }, 10000);
 
     peer.on('open', () => {
+      clearTimeout(openTimer);
       showRoomUI();
       connectToHost();
     });
@@ -1687,12 +1732,25 @@
       conn = null;
     }
 
+    let thisConn = null;
     try {
-      conn = peer.connect('tongci-' + roomId, { reliable: true });
+      thisConn = peer.connect('tongci-' + roomId, { reliable: true });
+      conn = thisConn;
       setupConnection();
     } catch (e) {
       console.error(e);
+      scheduleReconnect();
+      return;
     }
+
+    setTimeout(() => {
+      if (conn === thisConn && !thisConn.open) {
+        setConnStatus('连接超时，正在重试...', 'err');
+        try { thisConn.close(); } catch (e) {}
+        if (conn === thisConn) conn = null;
+        scheduleReconnect();
+      }
+    }, 8000);
   }
 
   function scheduleReconnect() {
@@ -1753,7 +1811,7 @@
       try { peer.destroy(); } catch (e) {}
     }
 
-    peer = new Peer('tongci-' + roomId, { debug: 0 });
+    peer = new Peer('tongci-' + roomId, PEER_CONFIG);
 
     peer.on('open', () => {
       isHost = true;
@@ -1799,7 +1857,7 @@
           try { peer.destroy(); } catch (e) {}
         }
 
-        peer = new Peer(null, { debug: 0 });
+        peer = new Peer(null, PEER_CONFIG);
         peer.on('open', () => { connectToHost(); });
         peer.on('disconnected', () => {
           if (peer && !peer.destroyed) {
@@ -1857,7 +1915,7 @@
       try { peer.destroy(); } catch (e) {}
     }
 
-    peer = new Peer('tongci-' + roomId, { debug: 0 });
+    peer = new Peer('tongci-' + roomId, PEER_CONFIG);
 
     peer.on('open', () => {
       setConnStatus('房间已恢复，等待好友加入...', 'ok');
@@ -1896,7 +1954,7 @@
       try { peer.destroy(); } catch (e) {}
     }
 
-    peer = new Peer(null, { debug: 0 });
+    peer = new Peer(null, PEER_CONFIG);
 
     peer.on('open', () => {
       connectToHost();
